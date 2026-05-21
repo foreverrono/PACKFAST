@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({ from: 'dispatch@pf-canada.com', to, subject, html }),
+      body: JSON.stringify({ from: 'PackFast <onboarding@resend.dev>', to, subject, html }),
     });
     const data = await r.json();
     if (!r.ok) return res.status(500).json({ error: data.message });

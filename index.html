@@ -5158,7 +5158,8 @@ var TMS_GROUPS={
   loads:{label:'Loads',subs:[{k:'transport',l:'Transport'},{k:'dispatch',l:'Dispatch'},{k:'loadboard',l:'Load Board'},{k:'ltlbuilder',l:'LTL Builder'},{k:'quotes',l:'Quotes'}]},
   fleet:{label:'Fleet',subs:[{k:'trucks',l:'Trucks'},{k:'trailers',l:'Trailers'},{k:'drivers',l:'Drivers'},{k:'driverpay',l:'Driver Pay'}]},
   operations:{label:'Operations',subs:[{k:'warehousing',l:'Warehousing'},{k:'logistics',l:'Logistics'},{k:'customs',l:'Customs'},{k:'ifta',l:'IFTA'},{k:'samsara',l:'Samsara'}]},
-  business:{label:'Business',subs:[{k:'customers',l:'Customers'},{k:'carriers',l:'Carriers'},{k:'permits',l:'Permits'},{k:'finances',l:'Finances'},{k:'payments',l:'Payments'},{k:'performance',l:'Performance'}]}
+  business:{label:'Business',subs:[{k:'customers',l:'Customers'},{k:'carriers',l:'Carriers'},{k:'permits',l:'Permits'},{k:'finances',l:'Finances'},{k:'payments',l:'Payments'},{k:'performance',l:'Performance'}]},
+  tutorial:{label:'Tutorial',subs:null}
 };
 var _tmsActiveGroup='dashboard';
 var _tmsActiveSub={loads:'transport',fleet:'trucks',operations:'warehousing',business:'carriers'};
@@ -5253,6 +5254,41 @@ function _tmsDispatch(key){
   else if(key==='ifta')tmsIFTA();
   else if(key==='samsara')tmsSamsara();
   else if(key==='payments')tmsStripePayments();
+  else if(key==='tutorial')tmsTutorial();
+}
+function tmsTutorial(){
+  var steps=[
+    {icon:'🚛',title:'Creating a Load',color:'#e07b20',body:'Go to <strong>Loads → Transport</strong> and tap <strong>+ New Load</strong>. Fill in the origin, destination, customer, driver, and revenue. The system auto-detects cross-border routes and flags if customs filing is required.'},
+    {icon:'📋',title:'Dispatching a Driver',color:'#f5a623',body:'Go to <strong>Loads → Dispatch</strong>. You\'ll see all active loads and their assigned drivers. Tap <strong>Dispatch</strong> on any load to send the driver a confirmation email instantly with their pickup details.'},
+    {icon:'📍',title:'Updating Load Status',color:'#e07b20',body:'Open any load and use the <strong>Status</strong> dropdown to update it — Assigned, En Route, Loaded, In Transit, At Border, Delivered, etc. The client is <strong>automatically emailed</strong> every time you change the status, so they always know where their freight is.'},
+    {icon:'🛃',title:'Filing Customs (BorderConnect)',color:'#f5a623',body:'Go to <strong>Operations → Customs</strong>. Select ACE (US-bound) or ACI (Canada-bound), pick the driver and load, then tap <strong>Submit</strong>. PackFast files directly with BorderConnect. You can check clearance status from the same screen.'},
+    {icon:'👥',title:'Managing Clients & Carriers',color:'#e07b20',body:'Go to <strong>Business → Customers</strong> to add clients and their notification email — this is the email that receives automatic load updates. Go to <strong>Business → Carriers</strong> to manage your carrier list with safety ratings and contact info.'},
+    {icon:'💰',title:'Driver Pay & Finances',color:'#f5a623',body:'Go to <strong>Fleet → Driver Pay</strong> to see each driver\'s completed loads, earnings, and pay log. Go to <strong>Business → Finances</strong> for revenue tracking and expense management. <strong>Business → Performance</strong> shows overall KPIs.'},
+    {icon:'📊',title:'Dashboard',color:'#e07b20',body:'The <strong>Dashboard</strong> is your home base — active loads, driver statuses, revenue summary, and recent activity all in one view. It updates live as you make changes anywhere in the system.'},
+    {icon:'⚙️',title:'Fleet & Equipment',color:'#f5a623',body:'Go to <strong>Fleet → Trucks</strong> or <strong>Trailers</strong> to manage your equipment. You can see which truck or trailer is assigned to which load. <strong>Fleet → Drivers</strong> shows driver availability, status, and assigned loads.'}
+  ];
+  var html='<div style="max-width:720px;margin:0 auto;padding:24px 16px">';
+  html+='<div style="margin-bottom:28px">';
+  html+='<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PackFast TMS</div>';
+  html+='<div style="font-size:22px;font-weight:300;color:var(--text);margin-bottom:8px">How to use the Supply Chain module</div>';
+  html+='<div style="font-size:13px;color:var(--text3);line-height:1.65">A quick walkthrough of everything you need to run your freight operation from one screen.</div>';
+  html+='</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:12px">';
+  steps.forEach(function(s,i){
+    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">';
+    html+='<div style="width:38px;height:38px;border-radius:10px;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+s.icon+'</div>';
+    html+='<div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:5px">'+s.title+'</div>';
+    html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">'+s.body+'</div></div>';
+    html+='<div style="font-size:10px;color:var(--border);font-weight:600;flex-shrink:0;margin-top:2px">'+(i+1)+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<div style="margin-top:28px;background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.2);border-radius:14px;padding:18px 20px">';
+  html+='<div style="font-size:11px;color:var(--accent);font-weight:500;margin-bottom:6px">Need help?</div>';
+  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">Contact dispatch at <a href="mailto:dispatch@pf-canada.com" style="color:var(--accent);text-decoration:none">dispatch@pf-canada.com</a> or call Operations at <a href="tel:4385216112" style="color:var(--accent);text-decoration:none">438-521-6112</a>.</div>';
+  html+='</div>';
+  html+='</div>';
+  document.getElementById('tms-body').innerHTML=html;
 }
 /* Legacy: some internal buttons call tmsTab() directly */
 function tmsTab(key){
@@ -8765,29 +8801,21 @@ function tmsUpdateStatus(loadId,status){
       if(custObj&&custObj.email)toEmail2=custObj.email;
     }
     if(toEmail2){
-      var statusEmojis={'Picked Up':'📦','In Transit':'🚛','At Border':'🛃','Delivered':'✅'};
-      var ico=statusEmojis[status]||'📋';
-      var subj='Load Update '+ico+' — '+load.id+' | '+status;
-      var msg='Dear '+load.customer+',\n\nYour shipment has been updated:\n\n'+
-        'Load: '+load.id+'\nReference: '+(load.ref||'—')+'\n'+
-        'Route: '+load.origin+' → '+load.dest+'\n'+
-        'Status: '+status+'\nUpdated: '+new Date().toLocaleString()+'\n\n'+
-        (status==='Delivered'?'Your shipment has been successfully delivered. Please confirm receipt and contact us with any concerns.\n\n':'')+
-        'toi.ai — Supply Chain\n';
-      var mailto='mailto:'+encodeURIComponent(toEmail2)+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(msg);
-      var notifyBanner=document.createElement('div');
-      notifyBanner.style.cssText='position:fixed;bottom:70px;right:16px;background:var(--surface2);border:0.5px solid rgba(245,166,35,0.35);border-radius:12px;padding:12px 16px;font-size:12px;color:var(--text2);z-index:9999;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,0.4)';
-      notifyBanner.innerHTML='<div style="color:var(--accent2);font-weight:500;margin-bottom:6px">✉ Notify Client?</div>'+
-        '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+load.customer+' · '+toEmail2+'</div>'+
-        '<div style="display:flex;gap:8px">'+
-        '<button onclick="window.open(\''+mailto+'\',\'_blank\');this.closest(\'[style*=fixed]\').remove()" class="tms-btn sm primary">Send Email</button>'+
-        '<button onclick="this.closest(\'[style*=fixed]\').remove()" class="tms-btn sm">Skip</button></div>';
-      document.body.appendChild(notifyBanner);
-      setTimeout(function(){if(notifyBanner.parentNode)notifyBanner.remove();},15000);
+      fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        type:'status',
+        load_id:load.id,
+        ref:load.ref||'',
+        client_name:load.customer,
+        client_email:toEmail2,
+        status:TMS_STATUS_LABELS[status]||status,
+        origin:load.origin||'—',
+        dest:load.dest||'—'
+      })}).catch(function(){});
     }
   }
   _fbPushTMS();
-  sfxSuccess();toast('Status updated: '+status);
+  var _notifyMsg=load.customer&&load.customer!=='—'&&(function(){var u=(window.TOI_USERS||[]).find(function(u){return u.name===load.customer;});if(u&&u.preferredEmail)return true;var c=(window.TMS_DATA.customers||[]).find(function(c){return c.name===load.customer||c.company===load.customer;});return !!(c&&c.email);})();
+  sfxSuccess();toast('Status updated'+(TMS_STATUS_LABELS[status]?' → '+(TMS_STATUS_LABELS[status]):'')+ (_notifyMsg?' · Client emailed ✓':''));
   tmsViewLoad(loadId);
 }
 function tmsDriverPay(){
