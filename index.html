@@ -1692,17 +1692,22 @@ function _bestNativeVoice(lang){
   if(!voices.length)return null;
   /* Prefer enhanced/neural/premium voices, then named naturals */
   var priority=[
-    /* macOS neural */
-    'Samantha (Enhanced)','Alex (Enhanced)','Karen (Enhanced)','Daniel (Enhanced)',
-    /* macOS standard — still decent */
-    'Samantha','Alex','Karen','Moira','Tessa',
-    /* Google Chrome TTS */
+    /* macOS/iOS premium (Siri-quality neural) */
+    'Ava (Premium)','Ava (Enhanced)','Ava',
+    'Samantha (Premium)','Samantha (Enhanced)',
+    'Susan (Premium)','Susan (Enhanced)',
+    'Tom (Premium)','Tom (Enhanced)',
+    'Alex (Enhanced)',
+    /* macOS standard */
+    'Samantha','Alex','Karen (Enhanced)','Karen','Moira','Tessa',
+    /* Google Chrome neural */
     'Google US English','Google UK English Female','Google UK English Male',
     /* Windows/Edge neural */
-    'Microsoft Aria Online','Microsoft Guy Online','Microsoft Jenny Online',
-    'Microsoft Aria','Microsoft Guy','Microsoft Jenny',
+    'Microsoft Aria Online (Natural)','Microsoft Jenny Online (Natural)',
+    'Microsoft Aria Online','Microsoft Jenny Online','Microsoft Guy Online',
+    'Microsoft Aria','Microsoft Jenny','Microsoft Guy',
     /* generic fallbacks */
-    'Daniel','Arthur','Rishi'
+    'Daniel (Enhanced)','Daniel','Arthur','Rishi'
   ];
   if(lang&&!lang.startsWith('en')){
     /* For non-English, just find a matching lang voice */
@@ -1720,9 +1725,9 @@ function _webSpeak(text,lang,delay){
   speechSynthesis.cancel();
   var utt=new SpeechSynthesisUtterance(text);
   utt.lang=lang||'en-US';
-  utt.rate=1.0;    /* natural pace — not rushed */
-  utt.pitch=0.95;  /* slightly lower than default — warmer, less synthetic */
-  utt.volume=0.93;
+  utt.rate=0.93;
+  utt.pitch=0.92;
+  utt.volume=0.95;
   var go=function(){
     var v=_bestNativeVoice(lang);
     if(v)utt.voice=v;
@@ -1734,10 +1739,9 @@ function _webSpeak(text,lang,delay){
 async function _oaiSpeak(text,vol){
   var oKey=localStorage.getItem('OAI_VOICE_KEY')||OPENAI_KEY;
   var hasKey=oKey&&oKey!=='YOUR_OPENAI_KEY_HERE';
+  if(!hasKey)return false;
   try{
-    var headers={'Content-Type':'application/json'};
-    if(hasKey)headers['x-oai-key']=oKey;
-    var res=await fetch('/api/tts',{method:'POST',headers:headers,body:JSON.stringify({text:text,voice:'nova'})});
+    var res=await fetch('/api/tts',{method:'POST',headers:{'Content-Type':'application/json','x-oai-key':oKey},body:JSON.stringify({text:text,voice:'nova'})});
     if(!res.ok)return false;
     var blob=await res.blob();var url=URL.createObjectURL(blob);
     var audio=new Audio(url);audio.volume=vol||0.94;audio.play();
