@@ -826,7 +826,6 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
           <div style="font-size:14px;color:var(--text);line-height:1.75;margin-bottom:14px">Packfast is an <strong>asset-based carrier</strong> with <strong>35+ years of combined experience</strong>. We move freight between Québec&nbsp;/&nbsp;Ontario and across the U.S. with reliable, on-time service.</div>
           <div style="font-size:13px;color:var(--text3);line-height:1.7">We offer <strong style="color:var(--text2)">in-house customs clearance</strong> at competitive prices — so your freight is border-ready right away. No delays, no third-party coordination. Our team handles the paperwork so your load crosses without interruption.</div>
           <div style="margin-top:20px;font-size:12px;color:var(--text3)">
-            <div style="margin-bottom:6px">📍 <span style="color:var(--text2)">Mailing:</span> 1314 rue Dubeau, Laval, QC</div>
             <div style="margin-bottom:6px">🏢 <span style="color:var(--text2)">Laval Terminal:</span> 2907 bd Dagenais, Laval, QC</div>
             <div>🏭 <span style="color:var(--text2)">Storage:</span> 6290 Rue Périnault, Montréal, QC</div>
           </div>
@@ -1762,13 +1761,6 @@ function seedDefaultUsers(){
   var empAcc={tms:true,chat:false,personal:[],business:['supplychain']};
   TOI_USERS=[
     {id:'u_ahsan',name:'Ahsan',password:'qysbAh-ramjeg-wizki8',role:'superadmin',access:full,phone:'+14389220274',twoFA:false},
-    {id:'u_mosa',name:'Mosa',password:'mosa',role:'superadmin',access:full},
-    {id:'u_talal',name:'Talal',password:'talal',role:'admin',access:full},
-    {id:'u_saghir',name:'Saghir',password:'saghir',role:'admin',access:full},
-    {id:'u_saadia',name:'Saadia',password:'saadia',role:'admin',access:full},
-    {id:'u_etienne',name:'Étienne',password:'étienne',role:'admin',access:full},
-    {id:'u_etienne2',name:'Etienne',password:'etienne',role:'admin',access:full},
-    {id:'u_mathilde',name:'Mathilde',password:'mathilde',role:'admin',access:full},
     /* Employee — dispatch operations only */
     {id:'u_ashad',name:'Ashad',password:'Ashad-2006',role:'employee',access:empAcc},
     /* Drivers — individual passkeys */
@@ -1776,8 +1768,7 @@ function seedDefaultUsers(){
     {id:'u_drv_shahrokh',name:'Shahrokh',password:'Shahrokh-376',role:'driver',driverRef:'DRV-SH',access:{}},
     /* Client Partners — per-client passkeys */
     {id:'u_mko',name:'MKO',password:'Mko-2026',role:'client-partner',clientRef:'MKO',access:{shipments:true}},
-    {id:'u_co7',name:'CO7',password:'Co7-2026',role:'client-partner',clientRef:'CO7',access:{shipments:true}},
-    {id:'u_m',name:'m',password:'m',role:'client',access:{chat:false,personal:['memories','translate','health','finances','permits','legal'],business:['clothes','bizfinance']}}
+    {id:'u_co7',name:'CO7',password:'Co7-2026',role:'client-partner',clientRef:'CO7',access:{shipments:true}}
   ];
   saveUsers();
   _seedApiKeys();
