@@ -1,0 +1,8 @@
+node_modules/
+.env
+.env.local
+.vercel/
+transport-data.js
+*.py
+firebase-upload.js
+
