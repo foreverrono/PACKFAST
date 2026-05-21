@@ -1272,14 +1272,12 @@ var OPENAI_KEY='YOUR_OPENAI_KEY_HERE';
 var KEY=localStorage.getItem('TOI_ANT_KEY')||'placeholder';
 var PW='qysbAh-ramjeg-wizki8';
 var currentUser=null;
-var TOI_USERS=JSON.parse(localStorage.getItem('TOI_USERS')||'[]');
 var _USER_SEED_V='v3';
+if(localStorage.getItem('_userSeedV')!==_USER_SEED_V){localStorage.removeItem('TOI_USERS');localStorage.setItem('_userSeedV',_USER_SEED_V);}
+var TOI_USERS=JSON.parse(localStorage.getItem('TOI_USERS')||'[]');
 (function(){fetch('/api/blob-store?key=users').then(function(r){return r.json();}).then(function(d){
   if(d&&d.data&&d.data._seedV===_USER_SEED_V&&Array.isArray(d.data.users)&&d.data.users.length){
     TOI_USERS=d.data.users;localStorage.setItem('TOI_USERS',JSON.stringify(TOI_USERS));
-  } else if(d&&d.data&&d.data._seedV!==_USER_SEED_V){
-    /* Seed version changed — clear stale data so seedDefaultUsers() runs fresh */
-    localStorage.removeItem('TOI_USERS');TOI_USERS=[];
   }
 }).catch(function(){});})();
 var hist=[];
