@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'PUT') {
     try {
       await put(`packfast/${key}.json`, JSON.stringify(req.body), {
-        access: 'public',
+        access: 'private',
         contentType: 'application/json',
         addRandomSuffix: false,
         allowOverwrite: true,

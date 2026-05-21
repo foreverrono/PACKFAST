@@ -20,7 +20,7 @@ async function readManifests() {
 async function writeManifests(manifests) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) { _memStore = manifests; return; }
   await put('packfast/bc-manifests.json', JSON.stringify(manifests), {
-    access: 'public',
+    access: 'private',
     contentType: 'application/json',
     addRandomSuffix: false,
     allowOverwrite: true,
