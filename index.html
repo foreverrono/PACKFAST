@@ -1274,6 +1274,7 @@ var KEY=localStorage.getItem('TOI_ANT_KEY')||'placeholder';
 var PW='qysbAh-ramjeg-wizki8';
 var currentUser=null;
 var TOI_USERS=JSON.parse(localStorage.getItem('TOI_USERS')||'[]');
+(function(){fetch('/api/blob-store?key=users').then(function(r){return r.json();}).then(function(d){if(d&&d.data&&Array.isArray(d.data)&&d.data.length){TOI_USERS=d.data;localStorage.setItem('TOI_USERS',JSON.stringify(TOI_USERS));}}).catch(function(){});})();
 var hist=[];
 var curMod=null,curSub=null,backTarget='select';
 var recording=false,recog=null,_voiceInputActive=false;
@@ -4823,7 +4824,7 @@ var ALL_PERSONAL=['memories','translate','health','finances','permits','legal'];
 var ALL_BUSINESS=['software','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','clothes','food','fitness','bizlegal'];
 var MOD_LABELS={memories:'Memories',translate:'Translate',health:'Health',finances:'Finances',permits:'Permits',legal:'Legal',software:'Software',entertainment:'Entertainment',supplychain:'Supply Chain',valuefleet:'Value Fleet',tech:'Tech',trading:'Trading',realestate:'Real Estate',bizfinance:'Finance',clothes:'Clothes',food:'Food',fitness:'Fitness',bizlegal:'Legal (Biz)'};
 
-function saveUsers(){localStorage.setItem('TOI_USERS',JSON.stringify(TOI_USERS));}
+function saveUsers(){localStorage.setItem('TOI_USERS',JSON.stringify(TOI_USERS));fetch('/api/blob-store?key=users',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(TOI_USERS)}).catch(function(){});}
 
 var _adminTab='users';
 function renderAdmin(){
