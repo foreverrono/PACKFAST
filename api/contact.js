@@ -4,7 +4,7 @@
 //   vercel env add RESEND_API_KEY production
 
 const TO_EMAIL = 'ahsan.ahmed@pf-canada.com';
-const FROM_EMAIL = 'quotes@pf-canada.com'; // must be verified in Resend dashboard
+const FROM_EMAIL = 'PackFast <onboarding@resend.dev>'; // works on free Resend plan without domain verification
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
