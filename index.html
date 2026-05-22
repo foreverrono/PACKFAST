@@ -1300,6 +1300,10 @@ function tmsGetSavedLocations(){
     if(l.origin&&l.origin!=='—'&&l.origin.length>4)set[l.origin]=1;
     if(l.dest&&l.dest!=='—'&&l.dest.length>4)set[l.dest]=1;
   });
+  (window.FM_LOADS||[]).forEach(function(l){
+    if(l.origin&&l.origin!=='—'&&l.origin.length>4)set[l.origin]=1;
+    if(l.dest&&l.dest!=='—'&&l.dest.length>4)set[l.dest]=1;
+  });
   (D.savedLocations||[]).forEach(function(a){if(a&&a.length>4)set[a]=1;});
   return Object.keys(set).sort();
 }
@@ -1350,10 +1354,9 @@ function tmsBindAC(inputEl){
   inputEl.addEventListener('blur',function(){setTimeout(function(){drop.classList.remove('show');},180);});
 }
 
-/* ── PAPS migration (runs once on data load) ── */
+/* ── PAPS migration (runs on every data load to catch FM-imported loads) ── */
 function _migratePaps(){
   var D=window.TMS_DATA;
-  if(D._papsMigrated)return;
   var papsRe=/^(MACT|LD-MACT|LD-18E9|18E9)\d*/i;
   var changed=false;
   D.loads.forEach(function(l,i){
@@ -1366,7 +1369,6 @@ function _migratePaps(){
       changed=true;
     }
   });
-  D._papsMigrated=true;
   if(changed&&typeof _fbPushTMS==='function')_fbPushTMS();
 }
 
@@ -5278,7 +5280,7 @@ var TMS_GROUPS={
   loads:{label:'Loads',subs:[{k:'transport',l:'Transport'},{k:'dispatch',l:'Dispatch'},{k:'loadboard',l:'Load Board'},{k:'ltlbuilder',l:'LTL Builder'},{k:'quotes',l:'Quotes'}]},
   fleet:{label:'Fleet',subs:[{k:'trucks',l:'Trucks'},{k:'trailers',l:'Trailers'},{k:'drivers',l:'Drivers'},{k:'driverpay',l:'Driver Pay'}]},
   operations:{label:'Operations',subs:[{k:'warehousing',l:'Warehousing'},{k:'logistics',l:'Logistics'},{k:'customs',l:'Customs'},{k:'ifta',l:'IFTA'},{k:'samsara',l:'Samsara'}]},
-  business:{label:'Business',subs:[{k:'customers',l:'Customers'},{k:'carriers',l:'Carriers'},{k:'permits',l:'Permits'},{k:'finances',l:'Finances'},{k:'payments',l:'Payments'},{k:'performance',l:'Performance'}]},
+  business:{label:'Business',subs:[{k:'customers',l:'Customers'},{k:'carriers',l:'Carriers'},{k:'permits',l:'Permits'},{k:'finances',l:'Finances'},{k:'payments',l:'Payments'},{k:'performance',l:'Performance'},{k:'invoices',l:'Invoices'}]},
   tutorial:{label:'Tutorial',subs:null}
 };
 var _tmsActiveGroup='dashboard';
@@ -5375,6 +5377,7 @@ function _tmsDispatch(key){
   else if(key==='ifta')tmsIFTA();
   else if(key==='samsara')tmsSamsara();
   else if(key==='payments')tmsStripePayments();
+  else if(key==='invoices')tmsInvoices();
   else if(key==='tutorial')tmsTutorial();
 }
 function tmsTutorial(){
@@ -5413,7 +5416,7 @@ function tmsTutorial(){
 }
 /* Legacy: some internal buttons call tmsTab() directly */
 function tmsTab(key){
-  var groupFor={dashboard:'dashboard',transport:'loads',dispatch:'loads',loadboard:'loads',ltlbuilder:'loads',quotes:'loads',trucks:'fleet',trailers:'fleet',equipment:'fleet',drivers:'fleet',driverpay:'fleet',warehousing:'operations',logistics:'operations',customs:'operations',ifta:'operations',samsara:'operations',customers:'business',carriers:'business',permits:'business',finances:'business',payments:'business',performance:'business',customerportal:'portals',driverportal:'portals'};
+  var groupFor={dashboard:'dashboard',transport:'loads',dispatch:'loads',loadboard:'loads',ltlbuilder:'loads',quotes:'loads',trucks:'fleet',trailers:'fleet',equipment:'fleet',drivers:'fleet',driverpay:'fleet',warehousing:'operations',logistics:'operations',customs:'operations',ifta:'operations',samsara:'operations',customers:'business',carriers:'business',permits:'business',finances:'business',payments:'business',performance:'business',invoices:'business',customerportal:'portals',driverportal:'portals'};
   var g=groupFor[key]||'dashboard';
   _tmsActiveGroup=g;
   document.querySelectorAll('#tms-grouptabs .tms-tab').forEach(function(t){t.classList.toggle('active',t.dataset.group===g);});
