@@ -9035,6 +9035,8 @@ function tmsUpdateStatus(loadId,status){
   if(!load)return;
   load.status=status;
   if(status==='Delivered'){
+    load.past=true;
+    load.deliveredDate=new Date().toLocaleDateString();
     var dObj=D.drivers.find(function(d){return d.name===load.driver;});
     if(dObj){
       if(!dObj.stats)dObj.stats={completed:0,pending:0,earnings:0};
@@ -9072,8 +9074,9 @@ function tmsUpdateStatus(loadId,status){
   }
   _fbPushTMS();
   var _notifyMsg=load.customer&&load.customer!=='—'&&(function(){var u=(window.TOI_USERS||[]).find(function(u){return u.name===load.customer;});if(u&&u.preferredEmail)return true;var c=(window.TMS_DATA.customers||[]).find(function(c){return c.name===load.customer||c.company===load.customer;});return !!(c&&c.email);})();
-  sfxSuccess();toast('Status updated'+(TMS_STATUS_LABELS[status]?' → '+(TMS_STATUS_LABELS[status]):'')+ (_notifyMsg?' · Client emailed ✓':''));
-  tmsViewLoad(loadId);
+  var _delivMsg=status==='Delivered'?' · Invoice pending under Business → Invoices':'';
+  sfxSuccess();toast('Status updated'+(TMS_STATUS_LABELS[status]?' → '+(TMS_STATUS_LABELS[status]):'')+ (_notifyMsg?' · Client emailed ✓':'')+_delivMsg);
+  if(status==='Delivered'){tmsTab('transport');}else{tmsViewLoad(loadId);}
 }
 function tmsDriverPay(){
   var D=window.TMS_DATA;
