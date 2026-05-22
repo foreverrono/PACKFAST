@@ -5381,36 +5381,103 @@ function _tmsDispatch(key){
   else if(key==='tutorial')tmsTutorial();
 }
 function tmsTutorial(){
-  var steps=[
-    {icon:'🚛',title:'Creating a Load',color:'#e07b20',body:'Go to <strong>Loads → Transport</strong> and tap <strong>+ New Load</strong>. Fill in the origin, destination, customer, driver, and revenue. The system auto-detects cross-border routes and flags if customs filing is required.'},
-    {icon:'📋',title:'Dispatching a Driver',color:'#f5a623',body:'Go to <strong>Loads → Dispatch</strong>. You\'ll see all active loads and their assigned drivers. Tap <strong>Dispatch</strong> on any load to send the driver a confirmation email instantly with their pickup details.'},
-    {icon:'📍',title:'Updating Load Status',color:'#e07b20',body:'Open any load and use the <strong>Status</strong> dropdown to update it — Assigned, En Route, Loaded, In Transit, At Border, Delivered, etc. The client is <strong>automatically emailed</strong> every time you change the status, so they always know where their freight is.'},
-    {icon:'🛃',title:'Filing Customs (BorderConnect)',color:'#f5a623',body:'Go to <strong>Operations → Customs</strong>. Select ACE (US-bound) or ACI (Canada-bound), pick the driver and load, then tap <strong>Submit</strong>. PackFast files directly with BorderConnect. You can check clearance status from the same screen.'},
-    {icon:'👥',title:'Managing Clients & Carriers',color:'#e07b20',body:'Go to <strong>Business → Customers</strong> to add clients and their notification email — this is the email that receives automatic load updates. Go to <strong>Business → Carriers</strong> to manage your carrier list with safety ratings and contact info.'},
-    {icon:'💰',title:'Driver Pay & Finances',color:'#f5a623',body:'Go to <strong>Fleet → Driver Pay</strong> to see each driver\'s completed loads, earnings, and pay log. Go to <strong>Business → Finances</strong> for revenue tracking and expense management. <strong>Business → Performance</strong> shows overall KPIs.'},
-    {icon:'📊',title:'Dashboard',color:'#e07b20',body:'The <strong>Dashboard</strong> is your home base — active loads, driver statuses, revenue summary, and recent activity all in one view. It updates live as you make changes anywhere in the system.'},
-    {icon:'⚙️',title:'Fleet & Equipment',color:'#f5a623',body:'Go to <strong>Fleet → Trucks</strong> or <strong>Trailers</strong> to manage your equipment. You can see which truck or trailer is assigned to which load. <strong>Fleet → Drivers</strong> shows driver availability, status, and assigned loads.'}
+  /* ── Load lifecycle steps (numbered flow) ── */
+  var lifecycle=[
+    {
+      icon:'🚛',num:'1',title:'Create a Load',where:'Loads → Transport',
+      body:'In the <strong>New Shipment</strong> form, enter the <strong>Pickup Name</strong> (e.g. Walmart DC) and <strong>Pickup Address</strong>, then the <strong>Delivery Name</strong> and <strong>Delivery Address</strong>. The address field auto-suggests from your history as you type. Fill in the customer, driver, trailer type, and revenue. Click <strong>Create Shipment</strong>. The load appears in the Active Loads table with status <em>Assigned</em>.'
+    },
+    {
+      icon:'📧',num:'2',title:'Dispatch the Driver',where:'Loads → Dispatch',
+      body:'Go to <strong>Loads → Dispatch</strong>. Find the load and click <strong>Dispatch</strong>. The driver receives an email instantly with the pickup address, delivery address, and load reference. The load status updates to <em>En Route to Pickup</em>.'
+    },
+    {
+      icon:'📍',num:'3',title:'Update Status Along the Way',where:'Loads → Transport → View',
+      body:'Open any load and use the <strong>Status</strong> dropdown. Move it through the stages as the driver progresses:<br><br><span style="color:var(--accent2)">Assigned → En Route to Pickup → Picked Up → In Transit → At Border → Delivered</span><br><br>The client is <strong>automatically emailed</strong> on every status change so they always know where their freight is. The load updates live on the Dashboard board.'
+    },
+    {
+      icon:'🛃',num:'4',title:'File Customs (Cross-Border Loads)',where:'Operations → Customs',
+      body:'For US-bound loads file <strong>ACE</strong>; for Canada-bound file <strong>ACI</strong>. Go to <strong>Operations → Customs</strong>, select the filing type, pick the driver and truck, enter the port of entry and ETA, then click <strong>Submit</strong>. PackFast files directly with BorderConnect. Check clearance status from the same screen. <em>File at least 1 hour before border arrival.</em>'
+    },
+    {
+      icon:'✅',num:'5',title:'Mark as Delivered',where:'Loads → Transport → View',
+      body:'Open the load and set Status to <strong>Delivered</strong>. Three things happen automatically:<br><br>1. The load moves to <strong>History</strong> (click the History button in Transport to find it).<br>2. The client receives a delivery confirmation email.<br>3. The load appears in <strong>Business → Invoices</strong> under "Delivered — Awaiting Invoice".<br><br>A toast notification reminds you: <em>"Invoice pending under Business → Invoices"</em>.'
+    },
+    {
+      icon:'🧾',num:'6',title:'Create the Invoice',where:'Business → Invoices',
+      body:'Go to <strong>Business → Invoices</strong>. At the top you will see the <strong>"Delivered — Awaiting Invoice"</strong> section listing every delivered load that has not been invoiced yet. Click <strong>Create Invoice →</strong> on a load row — the form below auto-fills with the client, a description, and the revenue amount. Confirm and click <strong>+ Create</strong>. The load leaves the pending list and the invoice appears in <strong>All Invoices</strong> as <em>Unpaid</em>. When payment arrives, click <strong>Mark Paid</strong>.'
+    }
   ];
-  var html='<div style="max-width:720px;margin:0 auto;padding:24px 16px">';
-  html+='<div style="margin-bottom:28px">';
-  html+='<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PackFast TMS</div>';
-  html+='<div style="font-size:22px;font-weight:300;color:var(--text);margin-bottom:8px">How to use the Supply Chain module</div>';
-  html+='<div style="font-size:13px;color:var(--text3);line-height:1.65">A quick walkthrough of everything you need to run your freight operation from one screen.</div>';
+
+  /* ── Reference cards ── */
+  var extras=[
+    {icon:'👥',title:'Clients & Carriers',body:'<strong>Business → Customers</strong> — add clients and their billing email (this is the address that gets automatic load-status emails). <strong>Business → Carriers</strong> — manage your carrier list with safety ratings and equipment details.'},
+    {icon:'💰',title:'Driver Pay & Finances',body:'<strong>Fleet → Driver Pay</strong> shows each driver\'s completed loads, earnings, and pay log. <strong>Business → Finances</strong> tracks revenue and expenses. <strong>Business → Performance</strong> shows overall KPIs by driver and customer.'},
+    {icon:'⚙️',title:'Fleet & Equipment',body:'<strong>Fleet → Trucks</strong> and <strong>Trailers</strong> show which unit is assigned to which load. <strong>Fleet → Drivers</strong> shows availability and current assignment. Assign trucks and trailers directly from the load form.'},
+    {icon:'📊',title:'Dashboard',body:'The <strong>Dashboard</strong> is your birds-eye view — active load count, pending dispatch, delivered today, and a live board of every active load. Click any row to open the full load detail in a side panel.'}
+  ];
+
+  var html='<div style="max-width:740px;margin:0 auto;padding:24px 16px">';
+
+  /* Header */
+  html+='<div style="margin-bottom:24px">';
+  html+='<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PackFast TMS — Tutorial</div>';
+  html+='<div style="font-size:22px;font-weight:300;color:var(--text);margin-bottom:6px">Load Lifecycle — Create to Invoice</div>';
+  html+='<div style="font-size:12px;color:var(--text3);line-height:1.65">Follow these 6 steps to move a load from creation through delivery and invoicing. Every step is linked to the exact screen in the app.</div>';
   html+='</div>';
-  html+='<div style="display:flex;flex-direction:column;gap:12px">';
-  steps.forEach(function(s,i){
-    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">';
-    html+='<div style="width:38px;height:38px;border-radius:10px;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">'+s.icon+'</div>';
-    html+='<div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:5px">'+s.title+'</div>';
-    html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">'+s.body+'</div></div>';
-    html+='<div style="font-size:10px;color:var(--border);font-weight:600;flex-shrink:0;margin-top:2px">'+(i+1)+'</div>';
+
+  /* Flow strip */
+  html+='<div style="display:flex;align-items:center;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:4px">';
+  var flowLabels=['Create','Dispatch','In Transit','Customs','Delivered','Invoice'];
+  var flowIcons=['🚛','📧','📍','🛃','✅','🧾'];
+  flowLabels.forEach(function(lbl,i){
+    html+='<div style="display:flex;align-items:center;flex-shrink:0">';
+    html+='<div style="display:flex;flex-direction:column;align-items:center;gap:4px">';
+    html+='<div style="width:32px;height:32px;border-radius:50%;background:rgba(224,123,32,'+(i===5?'0.25':'0.1')+');border:0.5px solid rgba(224,123,32,'+(i===5?'0.5':'0.25')+');display:flex;align-items:center;justify-content:center;font-size:14px">'+flowIcons[i]+'</div>';
+    html+='<div style="font-size:8px;color:'+(i===5?'var(--accent)':'var(--text3)')+';letter-spacing:0.05em;white-space:nowrap">'+lbl+'</div>';
+    html+='</div>';
+    if(i<flowLabels.length-1)html+='<div style="width:20px;height:1px;background:rgba(224,123,32,0.2);margin:0 2px;margin-bottom:14px;flex-shrink:0"></div>';
     html+='</div>';
   });
   html+='</div>';
-  html+='<div style="margin-top:28px;background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.2);border-radius:14px;padding:18px 20px">';
-  html+='<div style="font-size:11px;color:var(--accent);font-weight:500;margin-bottom:6px">Need help?</div>';
+
+  /* Lifecycle step cards */
+  html+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">';
+  lifecycle.forEach(function(s){
+    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">';
+    html+='<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0">';
+    html+='<div style="width:36px;height:36px;border-radius:10px;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.2);display:flex;align-items:center;justify-content:center;font-size:17px">'+s.icon+'</div>';
+    html+='<div style="font-size:9px;color:var(--accent);font-weight:600">STEP '+s.num+'</div>';
+    html+='</div>';
+    html+='<div style="flex:1;min-width:0">';
+    html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">'+s.title+'</div>';
+    html+='<div style="font-size:9px;color:var(--accent2);letter-spacing:0.08em;margin-bottom:8px;background:rgba(245,166,35,0.08);border:0.5px solid rgba(245,166,35,0.2);border-radius:6px;padding:2px 8px;display:inline-block">'+s.where+'</div>';
+    html+='<div style="font-size:12px;color:var(--text3);line-height:1.75">'+s.body+'</div>';
+    html+='</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  /* Reference section */
+  html+='<div style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:10px">Other Modules</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:24px">';
+  extras.forEach(function(s){
+    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px">';
+    html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">';
+    html+='<div style="font-size:16px">'+s.icon+'</div>';
+    html+='<div style="font-size:12px;font-weight:500;color:var(--text)">'+s.title+'</div>';
+    html+='</div>';
+    html+='<div style="font-size:11px;color:var(--text3);line-height:1.7">'+s.body+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  /* Help footer */
+  html+='<div style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.2);border-radius:12px;padding:16px 20px">';
+  html+='<div style="font-size:11px;color:var(--accent);font-weight:500;margin-bottom:5px">Need help?</div>';
   html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">Contact dispatch at <a href="mailto:dispatch@pf-canada.com" style="color:var(--accent);text-decoration:none">dispatch@pf-canada.com</a> or call Operations at <a href="tel:4385216112" style="color:var(--accent);text-decoration:none">438-521-6112</a>.</div>';
   html+='</div>';
+
   html+='</div>';
   document.getElementById('tms-body').innerHTML=html;
 }
@@ -7950,38 +8017,83 @@ function tmsTmsPermits(){
 }
 function tmsTmsFinances(){
   var D=window.TMS_DATA;
-  var rev=D.finances.revenue,exp=D.finances.expenses,net=rev-exp;
-  var expPct=Math.min(100,Math.round((exp/rev)*100));
-  var invRows=D.finances.invoices.map(function(inv){
-    var sc=inv.status==='Paid'?'green':'yellow';
+  if(!D.clientInvoices)D.clientInvoices=[];
+  if(!D.pendingInvoiceLoads)D.pendingInvoiceLoads=[];
+
+  /* ── Compute from real load + invoice data ── */
+  var deliveredLoads=D.loads.filter(function(l){return l.status==='Delivered'||l.status==='DELIVERED';});
+  var grossRev=deliveredLoads.reduce(function(s,l){return s+(parseFloat(l.revenue)||0);},0);
+  var exp=D.finances.expenses||0;
+  var net=grossRev-exp;
+  var expPct=grossRev?Math.min(100,Math.round((exp/grossRev)*100)):0;
+
+  var totalInvoiced=D.clientInvoices.reduce(function(s,i){return s+(parseFloat(i.amount)||0);},0);
+  var totalPaid=D.clientInvoices.filter(function(i){return i.status==='Paid';}).reduce(function(s,i){return s+(parseFloat(i.amount)||0);},0);
+  var totalUnpaid=totalInvoiced-totalPaid;
+  var needsInvoice=D.pendingInvoiceLoads.length;
+  var uninvoicedRev=D.pendingInvoiceLoads.reduce(function(s,p){return s+(parseFloat(p.revenue)||0);},0);
+
+  /* ── Invoice rows (from clientInvoices) ── */
+  var invRows=D.clientInvoices.slice().reverse().map(function(inv,ri){
+    var idx=D.clientInvoices.indexOf(inv);
+    var paid=inv.status==='Paid';
     return '<tr class="tms-tr">'+
     '<td class="tms-td" style="font-size:10px;color:var(--text3)">'+inv.id+'</td>'+
-    '<td class="tms-td">'+inv.client+'</td>'+
-    '<td class="tms-td" style="color:var(--accent2)">$'+inv.amount.toLocaleString()+'</td>'+
+    '<td class="tms-td">'+inv.clientName+'</td>'+
+    '<td class="tms-td" style="font-size:10px;color:var(--text3)">'+(inv.loadId||'—')+'</td>'+
+    '<td class="tms-td" style="color:var(--accent2)">$'+parseFloat(inv.amount).toLocaleString()+'</td>'+
     '<td class="tms-td" style="font-size:10px">'+inv.date+'</td>'+
-    '<td class="tms-td"><span class="tms-badge '+sc+'">'+inv.status+'</span></td></tr>';
+    '<td class="tms-td"><span class="tms-badge '+(paid?'green':'yellow')+'">'+inv.status+'</span></td>'+
+    '<td class="tms-td">'+(!paid?'<button class="tms-btn sm" onclick="vfMarkPaid('+idx+');tmsTmsFinances()">Mark Paid</button>':'')+'</td>'+
+    '</tr>';
   }).join('');
+
   document.getElementById('tms-body').innerHTML=
-  '<div class="tms-section-title">Finances <span class="tms-sim-badge">SCOTIABANK — SIMULATED</span></div>'+
-  '<div class="tms-kpi-grid" style="max-width:600px">'+
-  '<div class="tms-kpi"><div class="tms-kpi-lbl">Revenue</div><div class="tms-kpi-val" id="tfkpi-rev">0</div></div>'+
-  '<div class="tms-kpi"><div class="tms-kpi-lbl">Expenses</div><div class="tms-kpi-val" id="tfkpi-exp">0</div></div>'+
-  '<div class="tms-kpi"><div class="tms-kpi-lbl">Net Profit</div><div class="tms-kpi-val" id="tfkpi-net" style="color:var(--accent2)">0</div></div>'+
+  /* ── Alert: pending invoices ── */
+  (needsInvoice?
+    '<div style="background:rgba(255,107,107,0.07);border:0.5px solid rgba(255,107,107,0.3);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:720px">'+
+    '<div><div style="font-size:12px;color:var(--accent3);font-weight:500">⚠ '+needsInvoice+' delivered load'+(needsInvoice>1?'s':'')+' need'+(needsInvoice===1?'s':'')+' invoicing — $'+uninvoicedRev.toLocaleString()+' uncollected</div>'+
+    '<div style="font-size:10px;color:var(--text3);margin-top:2px">Go to Business → Invoices to create invoices for these loads.</div></div>'+
+    '<button class="tms-btn primary" style="white-space:nowrap;font-size:10px" onclick="tmsTab(\'invoices\')">Go to Invoices →</button>'+
+    '</div>':'')+
+
+  /* ── KPI strip ── */
+  '<div style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:10px">Financial Overview</div>'+
+  '<div class="tms-kpi-grid" style="max-width:760px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));margin-bottom:16px">'+
+  '<div class="tms-kpi"><div class="tms-kpi-lbl">Gross Revenue</div><div class="tms-kpi-val" id="tfkpi-rev" style="color:var(--accent2)">$0</div><div class="tms-kpi-chg">from '+deliveredLoads.length+' delivered loads</div></div>'+
+  '<div class="tms-kpi"><div class="tms-kpi-lbl">Expenses</div><div class="tms-kpi-val" id="tfkpi-exp">$0</div><div class="tms-kpi-chg">operating costs</div></div>'+
+  '<div class="tms-kpi"><div class="tms-kpi-lbl">Net Profit</div><div class="tms-kpi-val" id="tfkpi-net" style="color:'+(net>=0?'#63e682':'var(--accent3)')+'">$0</div><div class="tms-kpi-chg">after expenses</div></div>'+
+  '<div class="tms-kpi"><div class="tms-kpi-lbl">Invoiced</div><div class="tms-kpi-val" id="tfkpi-inv" style="color:var(--accent)">$0</div><div class="tms-kpi-chg">'+D.clientInvoices.length+' invoice'+(D.clientInvoices.length!==1?'s':'')+'</div></div>'+
+  '<div class="tms-kpi"><div class="tms-kpi-lbl">Collected</div><div class="tms-kpi-val" id="tfkpi-paid" style="color:#63e682">$0</div><div class="tms-kpi-chg">paid invoices</div></div>'+
+  '<div class="tms-kpi"><div class="tms-kpi-lbl">Outstanding</div><div class="tms-kpi-val" id="tfkpi-unpaid" style="color:'+(totalUnpaid>0?'var(--accent3)':'var(--text3)')+'">$0</div><div class="tms-kpi-chg">unpaid invoices</div></div>'+
   '</div>'+
-  '<div class="tms-bar-wrap" style="max-width:600px">'+
+
+  /* ── Expense bar ── */
+  '<div class="tms-bar-wrap" style="max-width:600px;margin-bottom:20px">'+
   '<div class="tms-bar-top"><span>Expense Ratio</span><span>'+expPct+'%</span></div>'+
   '<div class="tms-bar-bg"><div class="tms-bar-fill '+(expPct>75?'red':expPct>50?'yellow':'green')+'" id="tfbar" style="width:0"></div></div>'+
   '</div>'+
-  '<div class="tms-section-title">Invoices</div>'+
-  '<table class="tms-table" style="max-width:680px"><thead><tr>'+
-  '<th class="tms-th">Invoice</th><th class="tms-th">Client</th><th class="tms-th">Amount</th><th class="tms-th">Date</th><th class="tms-th">Status</th>'+
-  '</tr></thead><tbody>'+invRows+'</tbody></table>'+
-  '<div class="tms-invoice-actions"><button class="tms-btn primary" onclick="tmsGenerateInvoice()">Generate Invoice</button></div>';
+
+  /* ── Invoice table ── */
+  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;max-width:760px">'+
+  '<div style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase">All Invoices</div>'+
+  '<button class="tms-btn sm primary" onclick="tmsTab(\'invoices\')" style="font-size:9px">+ New Invoice →</button>'+
+  '</div>'+
+  (D.clientInvoices.length?
+    '<div style="overflow-x:auto;max-width:760px"><table class="tms-table"><thead><tr>'+
+    '<th class="tms-th">Invoice</th><th class="tms-th">Client</th><th class="tms-th">Load</th><th class="tms-th">Amount</th><th class="tms-th">Date</th><th class="tms-th">Status</th><th class="tms-th"></th>'+
+    '</tr></thead><tbody>'+invRows+'</tbody></table></div>':
+    '<div style="font-size:12px;color:var(--text3);padding:16px 0">No invoices yet. Mark a load as Delivered to start the invoice flow.</div>'
+  );
+
   sfxCoin();
   setTimeout(function(){
-    countUp(document.getElementById('tfkpi-rev'),rev,'$');
+    countUp(document.getElementById('tfkpi-rev'),grossRev,'$');
     countUp(document.getElementById('tfkpi-exp'),exp,'$');
     countUp(document.getElementById('tfkpi-net'),net,'$');
+    countUp(document.getElementById('tfkpi-inv'),totalInvoiced,'$');
+    countUp(document.getElementById('tfkpi-paid'),totalPaid,'$');
+    countUp(document.getElementById('tfkpi-unpaid'),totalUnpaid,'$');
     var bar=document.getElementById('tfbar');if(bar)bar.style.width=expPct+'%';
   },100);
 }
