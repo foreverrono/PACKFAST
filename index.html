@@ -5593,7 +5593,7 @@ function tmsDashboard(){
   var totalActive=fmActive.length+allActiveTms.length;
   var pendingDispatch=allActiveTms.filter(function(l){return !l.dispatched&&(!l.driver||l.driver==='Unassigned'||l.status==='ASSIGNED');}).length;
   var today=new Date().toLocaleDateString();
-  var delivToday=D.loads.filter(function(l){return (l.status==='Delivered'||l.status==='DELIVERED')&&(l.deliveredDate===today||l.created===today);}).length;
+  var delivToday=D.loads.filter(function(l){return (l.status==='Delivered'||l.status==='DELIVERED')&&l.deliveredDate===today;}).length;
 
   /* ── Board rows (all active loads — FM + TMS) ── */
   var allBoardLoads=fmActive.map(function(l){return {id:l.trip_name||l.id,customer:l.customer||'—',origin:l.origin||'',dest:l.dest||'',driver:l.driver||'—',status:l.status||'Active',_raw:l,_src:'fm'};}).concat(
@@ -5844,9 +5844,9 @@ function tmsTransport(){
   '<div id="tl-type-gate" style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.15);border-radius:8px;padding:12px;font-size:11px;color:var(--text3);margin-bottom:10px;display:block">Select a Type and Direction above to continue.</div>'+
   '<div id="tl-details-section" style="display:none">'+
   '<div class="tms-form-grid">'+
-  '<div><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC, Costco"></div>'+
+  '<div class="tms-form-full"><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC, Costco"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Pickup Address</label><input class="tms-input" id="tl-orig" placeholder="e.g. 123 King St W, Toronto, ON" onchange="tmsAutoRoute()"></div>'+
-  '<div><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot, Amazon FC"></div>'+
+  '<div class="tms-form-full"><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot, Amazon FC"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Delivery Address</label>'+
   '<div style="display:flex;gap:6px"><input class="tms-input" id="tl-dest" placeholder="e.g. 456 Michigan Ave, Chicago, IL" onchange="tmsAutoRoute()" style="flex:1"><select class="tms-select" id="tl-terminal-dest" onchange="tmsSelectTerminalDest(this)" style="flex:0 0 auto;max-width:160px"><option value="">Or Terminal ↓</option></select></div>'+
   '</div>'+
@@ -8044,7 +8044,7 @@ function tmsTmsFinances(){
     '<td class="tms-td" style="color:var(--accent2)">$'+parseFloat(inv.amount).toLocaleString()+'</td>'+
     '<td class="tms-td" style="font-size:10px">'+inv.date+'</td>'+
     '<td class="tms-td"><span class="tms-badge '+(paid?'green':'yellow')+'">'+inv.status+'</span></td>'+
-    '<td class="tms-td">'+(!paid?'<button class="tms-btn sm" onclick="vfMarkPaid('+idx+');tmsTmsFinances()">Mark Paid</button>':'')+'</td>'+
+    '<td class="tms-td">'+(!paid?'<button class="tms-btn sm" onclick="var D=window.TMS_DATA;if(D.clientInvoices['+idx+'])D.clientInvoices['+idx+'].status=\'Paid\';if(typeof _fbPushTMS===\'function\')_fbPushTMS();sfxSuccess();toast(\'Marked as paid\');tmsTmsFinances()">Mark Paid</button>':'')+'</td>'+
     '</tr>';
   }).join('');
 
