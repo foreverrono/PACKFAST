@@ -516,6 +516,29 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
 .tms-driver-name{font-size:20px;color:var(--text);font-weight:300;margin-bottom:4px;}
 .tms-driver-meta{font-size:10px;color:var(--text3);margin-bottom:14px;}
 .tms-invoice-actions{display:flex;gap:8px;margin-top:14px;}
+/* ── ADDRESS AUTOCOMPLETE ── */
+.ac-wrap{position:relative;flex:1;}
+.ac-drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--surface2);border:0.5px solid rgba(224,123,32,0.4);border-radius:8px;z-index:9999;max-height:190px;overflow-y:auto;display:none;box-shadow:0 8px 24px rgba(0,0,0,0.4);}
+.ac-drop.show{display:block;}
+.ac-item{padding:8px 14px;font-size:12px;color:var(--text2);cursor:pointer;border-bottom:0.5px solid var(--border);}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.sel{background:rgba(224,123,32,0.1);color:var(--text);}
+/* ── PENDING-INVOICE BANNER ── */
+.pinv-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:rgba(245,166,35,0.06);border:0.5px solid rgba(245,166,35,0.22);border-radius:10px;margin-bottom:8px;}
+.pinv-info{flex:1;min-width:0;}
+.pinv-id{font-size:11px;color:var(--accent2);letter-spacing:0.06em;margin-bottom:2px;}
+.pinv-route{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* ── DASH SIDE PANEL ── */
+.dash-side{position:fixed;top:0;right:0;bottom:0;width:min(420px,100vw);background:var(--surface2);border-left:0.5px solid var(--border);z-index:9998;overflow-y:auto;transform:translateX(100%);transition:transform 0.25s ease;padding:24px;}
+.dash-side.open{transform:translateX(0);}
+.dash-side-close{position:absolute;top:16px;right:16px;background:transparent;border:0.5px solid var(--border);color:var(--text3);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;}
+/* ── SIMPLIFIED BOARD ROW ── */
+.board-row{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:0.5px solid var(--border);cursor:pointer;transition:background 0.15s;}
+.board-row:hover{background:rgba(224,123,32,0.06);}
+.board-row-id{font-size:10px;color:var(--text3);letter-spacing:0.06em;min-width:80px;flex-shrink:0;}
+.board-row-client{font-size:12px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.board-row-route{font-size:11px;color:var(--text2);flex:1.5;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.board-row-driver{font-size:11px;color:var(--text3);min-width:80px;flex-shrink:0;}
 /* ════════ ADMIN PANEL ════════ */
 .adm-wrap{flex:1;overflow-y:auto;padding:24px 20px;}
 .adm-title{font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:18px;}
@@ -1242,7 +1265,7 @@ var _fbDB=null;
 function _fbPushTMS(){
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
-  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
+  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
 }
 function _fbPushUsers(){
   if(!FB_ENABLED||!_fbDB)return;
@@ -1264,7 +1287,104 @@ function _fbListenTMS(){
     if(d.clientInvoices)D.clientInvoices=d.clientInvoices;
     if(d.carriers)D.carriers=d.carriers;
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
+    if(d.savedLocations)D.savedLocations=d.savedLocations;
+    if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
   });
+}
+
+/* ── ADDRESS AUTOCOMPLETE helpers ── */
+function tmsGetSavedLocations(){
+  var D=window.TMS_DATA;
+  var set={};
+  (D.loads||[]).forEach(function(l){
+    if(l.origin&&l.origin!=='—'&&l.origin.length>4)set[l.origin]=1;
+    if(l.dest&&l.dest!=='—'&&l.dest.length>4)set[l.dest]=1;
+  });
+  (D.savedLocations||[]).forEach(function(a){if(a&&a.length>4)set[a]=1;});
+  return Object.keys(set).sort();
+}
+function tmsSaveLocation(addr){
+  if(!addr||addr==='—'||addr.length<5)return;
+  var D=window.TMS_DATA;
+  if(!D.savedLocations)D.savedLocations=[];
+  if(D.savedLocations.indexOf(addr)===-1){D.savedLocations.push(addr);_fbPushTMS();}
+}
+function tmsBindAC(inputEl){
+  if(!inputEl||inputEl.dataset.acBound)return;
+  inputEl.dataset.acBound='1';
+  var wrap=document.createElement('div');wrap.className='ac-wrap';
+  var parent=inputEl.parentNode;
+  parent.insertBefore(wrap,inputEl);wrap.appendChild(inputEl);
+  var drop=document.createElement('div');drop.className='ac-drop';wrap.appendChild(drop);
+  var selIdx=-1;
+  function showDrop(items){
+    selIdx=-1;
+    if(!items.length){drop.classList.remove('show');drop.innerHTML='';return;}
+    drop.innerHTML=items.slice(0,10).map(function(a){
+      return '<div class="ac-item" data-val="'+a.replace(/"/g,'&quot;')+'">'+a+'</div>';
+    }).join('');
+    drop.classList.add('show');
+    drop.querySelectorAll('.ac-item').forEach(function(item){
+      item.addEventListener('mousedown',function(e){e.preventDefault();});
+      item.addEventListener('click',function(){
+        inputEl.value=this.dataset.val;
+        inputEl.dispatchEvent(new Event('change'));
+        inputEl.dispatchEvent(new Event('input'));
+        drop.classList.remove('show');
+      });
+    });
+  }
+  inputEl.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q||q.length<1){drop.classList.remove('show');return;}
+    showDrop(tmsGetSavedLocations().filter(function(a){return a.toLowerCase().indexOf(q)!==-1;}));
+  });
+  inputEl.addEventListener('keydown',function(e){
+    var items=drop.querySelectorAll('.ac-item');
+    if(!items.length)return;
+    if(e.key==='ArrowDown'){e.preventDefault();selIdx=Math.min(selIdx+1,items.length-1);items.forEach(function(i,n){i.classList.toggle('sel',n===selIdx);});}
+    else if(e.key==='ArrowUp'){e.preventDefault();selIdx=Math.max(selIdx-1,0);items.forEach(function(i,n){i.classList.toggle('sel',n===selIdx);});}
+    else if(e.key==='Enter'&&selIdx>=0){e.preventDefault();items[selIdx].click();}
+    else if(e.key==='Escape'){drop.classList.remove('show');}
+  });
+  inputEl.addEventListener('blur',function(){setTimeout(function(){drop.classList.remove('show');},180);});
+}
+
+/* ── PAPS migration (runs once on data load) ── */
+function _migratePaps(){
+  var D=window.TMS_DATA;
+  if(D._papsMigrated)return;
+  var papsRe=/^(MACT|LD-MACT|LD-18E9|18E9)\d*/i;
+  var changed=false;
+  D.loads.forEach(function(l,i){
+    if(papsRe.test(l.id)&&!l.paps){
+      l.paps=l.id;
+      l.id='TOI-M'+(1001+i);
+      changed=true;
+    } else if(papsRe.test(l.ref)&&!l.paps){
+      l.paps=l.ref;
+      changed=true;
+    }
+  });
+  D._papsMigrated=true;
+  if(changed&&typeof _fbPushTMS==='function')_fbPushTMS();
+}
+
+/* ── Delivered → pending invoice helper ── */
+function _markLoadPendingInvoice(load){
+  var D=window.TMS_DATA;
+  if(!D.pendingInvoiceLoads)D.pendingInvoiceLoads=[];
+  var already=D.pendingInvoiceLoads.find(function(p){return p.loadId===load.id;});
+  var invoiced=(D.clientInvoices||[]).find(function(i){return i.loadId===load.id;});
+  if(!already&&!invoiced){
+    D.pendingInvoiceLoads.push({loadId:load.id,customer:load.customer||'—',origin:load.origin||'—',dest:load.dest||'—',revenue:load.revenue||0,deliveredDate:new Date().toLocaleDateString(),ref:load.ref||''});
+  }
+}
+/* ── Remove load from pending invoice list ── */
+function _removePendingInvoice(loadId){
+  var D=window.TMS_DATA;
+  if(!D.pendingInvoiceLoads)return;
+  D.pendingInvoiceLoads=D.pendingInvoiceLoads.filter(function(p){return p.loadId!==loadId;});
 }
 
 var API='/api/ai';
@@ -5177,6 +5297,7 @@ function renderSupplyChain(){
   '<div id="tms-subtabs" style="display:none;padding:8px 16px 0;background:var(--surface2);border-bottom:0.5px solid var(--border);display:flex;flex-wrap:wrap;gap:6px"></div>'+
   '<div id="tms-body" class="tms-body"></div>'+
   '</div>';
+  _migratePaps();
   tmsGroup('dashboard');
 }
 
@@ -5396,59 +5517,71 @@ function tmsDashboard(){
       '</tr>';
   }).join('');
 
-  /* ── Active Loads panel ── */
-  var pending=window.FM_PENDING||[];
-  var activePanel='';
-  if(pending.length){
-    var activeCards=pending.map(function(l){
-      var orig=(l.origin||'').split(',')[0]||'—';
-      var dst=(l.dest||'').split(',')[0]||'—';
-      var pickStop=l.stops&&l.stops.find(function(s){return s.type==='P';});
-      var delStop=l.stops&&l.stops.find(function(s){return s.type==='D';});
-      var pickDate=pickStop?pickStop.date:'';
-      var delDate=delStop?delStop.date:'';
-      var dist=l.distance_km||l.distance_mi||'';
-      var eta=l.eta||'';
-      return '<div style="flex:0 0 auto;width:280px;background:rgba(245,166,35,0.04);border:0.5px solid rgba(245,166,35,0.3);border-radius:12px;padding:16px;position:relative;overflow:hidden;transition:border-color 0.2s,box-shadow 0.2s" onmouseover="this.style.borderColor=\'rgba(245,166,35,0.6)\';this.style.boxShadow=\'0 0 24px rgba(245,166,35,0.12)\'" onmouseout="this.style.borderColor=\'rgba(245,166,35,0.3)\';this.style.boxShadow=\'none\'">'+
-        '<div style="position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:5px">'+
-          '<div style="width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:pulse 2s infinite"></div>'+
-          '<span style="font-size:8px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent2)">Active</span>'+
-        '</div>'+
-        '<div style="font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:4px">'+(l.trip_name||l.id)+'</div>'+
-        '<div style="font-size:12px;font-weight:500;color:var(--text);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px">'+l.customer+'</div>'+
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+
-          '<div style="font-size:10px;color:var(--text3);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+orig+'</div>'+
-          '<div style="font-size:9px;color:var(--accent2)">→</div>'+
-          '<div style="font-size:10px;color:var(--text3);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right">'+dst+'</div>'+
-        '</div>'+
-        '<div style="height:0.5px;background:rgba(245,166,35,0.12);margin-bottom:8px"></div>'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'+
-          '<div><div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Driver</div><div style="font-size:11px;color:var(--text)">'+(l.driver||'—')+'</div></div>'+
-          '<div><div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Rate</div><div style="font-size:11px;color:var(--accent2)">$'+(l.revenue||0).toLocaleString()+' '+(l.currency||'')+'</div></div>'+
-          (pickDate?'<div><div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Pickup</div><div style="font-size:11px;color:var(--text)">'+pickDate+'</div></div>':'')+
-          (delDate?'<div><div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Delivery</div><div style="font-size:11px;color:var(--text)">'+delDate+'</div></div>':'')+
-          (dist?'<div><div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Distance</div><div style="font-size:11px;color:var(--text)">'+dist+'</div></div>':'')+
-          (eta?'<div><div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">ETA Drive</div><div style="font-size:11px;color:var(--text)">'+eta+'</div></div>':'')+
-        '</div>'+
-      '</div>';
-    }).join('');
+  /* ── Ops summary counts ── */
+  var allActiveTms=D.loads.filter(function(l){return !l.past&&l.status!=='Delivered'&&l.status!=='DELIVERED';});
+  var fmActive=window.FM_PENDING||[];
+  var totalActive=fmActive.length+allActiveTms.length;
+  var pendingDispatch=allActiveTms.filter(function(l){return !l.dispatched&&(!l.driver||l.driver==='Unassigned'||l.status==='ASSIGNED');}).length;
+  var today=new Date().toLocaleDateString();
+  var delivToday=D.loads.filter(function(l){return (l.status==='Delivered'||l.status==='DELIVERED')&&(l.deliveredDate===today||l.created===today);}).length;
 
-    activePanel=
-      '<div style="background:rgba(245,166,35,0.03);border:0.5px solid rgba(245,166,35,0.18);border-radius:14px;padding:16px 20px;margin-bottom:16px">'+
-        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+
-          '<div style="width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 12px var(--accent2);animation:pulse 2s infinite"></div>'+
-          '<span style="font-size:12px;font-weight:500;color:var(--accent2);letter-spacing:0.06em">'+pending.length+' Active Load'+(pending.length!==1?'s':'')+'</span>'+
-          '<span style="font-size:10px;color:var(--text3);margin-left:4px">— In Dispatch</span>'+
-        '</div>'+
-        '<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:rgba(245,166,35,0.2) transparent">'+
-          activeCards+
-        '</div>'+
+  /* ── Board rows (all active loads — FM + TMS) ── */
+  var allBoardLoads=fmActive.map(function(l){return {id:l.trip_name||l.id,customer:l.customer||'—',origin:l.origin||'',dest:l.dest||'',driver:l.driver||'—',status:l.status||'Active',_raw:l,_src:'fm'};}).concat(
+    allActiveTms.map(function(l){return {id:l.id,customer:l.customer||'—',origin:l.origin||'',dest:l.dest||'',driver:l.driver||'—',status:l.status||'ASSIGNED',_raw:l,_src:'tms'};}));
+  var sc2={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green','Active':'yellow','ASSIGNED':'purple','EN_ROUTE_PICKUP':'blue','ARRIVED_PICKUP':'yellow','LOADED':'yellow','IN_TRANSIT':'purple','ARRIVED_DELIVERY':'blue','DELIVERED':'green','DELAYED':'red'};
+  var boardRows=allBoardLoads.map(function(r){
+    var orig=(r.origin||'').split(',')[0]||'—';
+    var dst=(r.dest||'').split(',')[0]||'—';
+    var drvFirst=(r.driver||'—').split(' ')[0];
+    var cls=sc2[r.status]||'purple';
+    var lbl=TMS_STATUS_LABELS&&TMS_STATUS_LABELS[r.status]?TMS_STATUS_LABELS[r.status]:r.status;
+    var clickId=r._src==='tms'?r.id:(r._raw&&r._raw.id?r._raw.id:'');
+    var clickFn=clickId?'tmsDashPanel(\''+clickId+'\',\''+r._src+'\')':'';
+    return '<div class="board-row" onclick="'+clickFn+'">'+
+      '<div class="board-row-id">'+r.id+'</div>'+
+      '<div class="board-row-client">'+r.customer+'</div>'+
+      '<div class="board-row-route">'+orig+' → '+dst+'</div>'+
+      '<div class="board-row-driver">'+drvFirst+'</div>'+
+      '<div style="flex-shrink:0"><span class="tms-badge '+cls+'" style="font-size:9px">'+lbl+'</span></div>'+
       '</div>';
-  }
+  }).join('');
 
   var bdy=document.getElementById('tms-body');
   bdy.innerHTML=
-  activePanel+
+  /* ── Ops summary strip ── */
+  '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;max-width:520px">'+
+  '<div style="background:rgba(245,166,35,0.07);border:0.5px solid rgba(245,166,35,0.25);border-radius:12px;padding:14px 16px;text-align:center">'+
+    '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">Active Loads</div>'+
+    '<div style="font-size:28px;font-weight:300;color:var(--text)">'+totalActive+'</div>'+
+  '</div>'+
+  '<div style="background:rgba(255,107,107,0.06);border:0.5px solid rgba(255,107,107,0.2);border-radius:12px;padding:14px 16px;text-align:center">'+
+    '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent3);margin-bottom:6px">Pending Dispatch</div>'+
+    '<div style="font-size:28px;font-weight:300;color:var(--text)">'+pendingDispatch+'</div>'+
+  '</div>'+
+  '<div style="background:rgba(99,230,130,0.05);border:0.5px solid rgba(99,230,130,0.18);border-radius:12px;padding:14px 16px;text-align:center">'+
+    '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#63e682;margin-bottom:6px">Delivered Today</div>'+
+    '<div style="font-size:28px;font-weight:300;color:var(--text)">'+delivToday+'</div>'+
+  '</div>'+
+  '</div>'+
+
+  /* ── Active loads board ── */
+  '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden">'+
+  '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:0.5px solid var(--border)">'+
+    '<div style="width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:pulse 2s infinite;flex-shrink:0"></div>'+
+    '<span style="font-size:12px;font-weight:500;color:var(--accent2);letter-spacing:0.06em">Active Loads</span>'+
+    '<span style="font-size:10px;color:var(--text3);flex:1">click a row for details</span>'+
+    '<button class="tms-btn sm" onclick="tmsTab(\'transport\')" style="font-size:9px;padding:3px 10px">View All →</button>'+
+  '</div>'+
+  '<div style="display:grid;grid-template-columns:80px 1fr 1.5fr 80px auto;gap:0;padding:6px 14px 4px;border-bottom:0.5px solid var(--border)">'+
+    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">ID</div>'+
+    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Client</div>'+
+    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Route</div>'+
+    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Driver</div>'+
+    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Status</div>'+
+  '</div>'+
+  (boardRows||'<div style="padding:20px 16px;font-size:12px;color:var(--text3)">No active loads right now.</div>')+
+  '</div>'+
+
   /* ── KPI row ── */
   '<div class="tms-kpi-grid" id="tms-kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'+
   '<div class="tms-kpi"><div class="tms-kpi-lbl">Total Loads</div><div class="tms-kpi-val" id="tkpi-0">0</div><div class="tms-kpi-chg up">all time</div></div>'+
@@ -5538,6 +5671,59 @@ function _fmCategoryBars(FM){
       '</div>';
   }).join('');
 }
+function tmsDashPanel(id,src){
+  var existing=document.getElementById('_dash-side');
+  if(existing)existing.remove();
+  var D=window.TMS_DATA;
+  var l=null;
+  if(src==='tms'){l=D.loads.find(function(x){return x.id===id;});}
+  else{var all=(window.FM_PENDING||[]).concat(window.FM_LOADS||[]);l=all.find(function(x){return (x.trip_name||x.id)===id||x.id===id;});}
+  if(!l)return;
+  var sc={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green','Active':'yellow','ASSIGNED':'purple','EN_ROUTE_PICKUP':'blue','IN_TRANSIT':'purple','ARRIVED_DELIVERY':'blue','DELIVERED':'green','DELAYED':'red'};
+  var cls=sc[l.status]||'purple';
+  var lbl=TMS_STATUS_LABELS&&TMS_STATUS_LABELS[l.status]?TMS_STATUS_LABELS[l.status]:l.status;
+  var panel=document.createElement('div');panel.className='dash-side';panel.id='_dash-side';
+  var rows=[
+    ['Load ID',l.id||l.trip_name||'—'],
+    ['Reference',l.ref||'—'],
+    ['Customer',l.customer||'—'],
+    ['Origin',l.origin||'—'],
+    ['Destination',l.dest||'—'],
+    ['Driver',l.driver||'—'],
+    ['Truck',l.truck||'—'],
+    ['Trailer',l.trailer||l.trailerType||'—'],
+    ['Commodity',l.commodity||'—'],
+    ['Weight',l.weight||'—'],
+    ['Revenue','$'+(l.revenue||0).toLocaleString()+' '+(l.currency||'')],
+    ['Pickup Date',l.pickupDate||'—'],
+    ['Delivery Date',l.deliveryDate||'—'],
+    ['PAPS',l.paps||'—'],
+    ['Created',l.created||l.date||'—'],
+  ].filter(function(r){return r[1]&&r[1]!=='—'&&r[1]!=='$0 ';}).map(function(r){
+    return '<div class="tms-detail-row"><span class="tms-detail-lbl">'+r[0]+'</span><span class="tms-detail-val" style="font-size:11px">'+r[1]+'</span></div>';
+  }).join('');
+  var stops=l.stops?l.stops.map(function(s){
+    return '<div style="font-size:11px;color:var(--text2);padding:6px 0;border-bottom:0.5px solid var(--border)">'+
+      '<span class="tms-badge '+(s.type==='P'?'blue':'green')+'" style="font-size:8px;margin-right:6px">'+(s.type==='P'?'PU':'DEL')+'</span>'+
+      (s.name?s.name+' — ':'')+s.city+(s.date?' · '+s.date:'')+'</div>';
+  }).join(''):'';
+  panel.innerHTML=
+    '<button class="dash-side-close" onclick="this.parentElement.classList.remove(\'open\');setTimeout(function(){document.getElementById(\'_dash-side\')&&document.getElementById(\'_dash-side\').remove();},260)">✕ Close</button>'+
+    '<div style="margin-top:8px;margin-bottom:16px;display:flex;align-items:center;gap:10px">'+
+      '<div style="font-size:18px;font-weight:300;color:var(--text);flex:1">'+l.id+'</div>'+
+      '<span class="tms-badge '+cls+'">'+lbl+'</span>'+
+    '</div>'+
+    rows+
+    (stops?'<div style="margin-top:12px"><div class="tms-section-title" style="font-size:11px;margin-bottom:6px">Stops</div>'+stops+'</div>':'')+
+    (src==='tms'?'<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">'+
+      '<button class="tms-btn primary" onclick="tmsViewLoad(\''+l.id+'\')">Open Full Detail</button>'+
+      '<button class="tms-btn" onclick="tmsEditLoad(\''+l.id+'\')">Edit</button>'+
+    '</div>':'');
+  document.body.appendChild(panel);
+  requestAnimationFrame(function(){panel.classList.add('open');});
+  /* close on backdrop click */
+  panel.addEventListener('click',function(e){if(e.target===panel){panel.classList.remove('open');setTimeout(function(){panel.remove();},260);}});
+}
 var _tmsShowHistory=false;
 function tmsTransport(){
   var D=window.TMS_DATA;
@@ -5606,6 +5792,7 @@ function tmsTransport(){
   '<div><label class="tms-label">Carrier Ref # / Cost</label><input class="tms-input" id="tl-carrier-ref" placeholder="Carrier ref # and quoted rate" style="display:none"></div>'+
   '<div><label class="tms-label">Pickup Date</label><input class="tms-input" id="tl-pickup-date" type="date"></div>'+
   '<div><label class="tms-label">Delivery Date</label><input class="tms-input" id="tl-delivery-date" type="date"></div>'+
+  '<div><label class="tms-label">PAPS Number <span style="color:var(--text3);font-size:9px">(optional)</span></label><input class="tms-input" id="tl-paps" placeholder="e.g. MACT00003205"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Special Instructions</label><input class="tms-input" id="tl-notes" placeholder="Hazmat, temp req, etc."></div>'+
   '<div id="tl-carrier-rec" style="display:none"></div>'+
   '</div>'+
@@ -5629,6 +5816,11 @@ function tmsTransport(){
   '</tr></thead><tbody>'+loadRows+'</tbody></table></div>'+
   '</div>'+
   '</div>';
+  /* Bind address autocomplete after render */
+  setTimeout(function(){
+    var o=document.getElementById('tl-orig');if(o)tmsBindAC(o);
+    var d=document.getElementById('tl-dest');if(d)tmsBindAC(d);
+  },0);
 }
 function tmsAutoRoute(){
   var orig=(document.getElementById('tl-orig')||{}).value||'';
@@ -5786,6 +5978,7 @@ function tmsAddLoad(postToBoard){
   var trailerType=(document.getElementById('tl-trailer')||{}).value||"Dry Van 53'";
   var trailerId=((document.getElementById('tl-trailer-id')||{}).value||'').trim();
   var notes=((document.getElementById('tl-notes')||{}).value||'').trim();
+  var paps=((document.getElementById('tl-paps')||{}).value||'').trim();
   var assignMode=(document.getElementById('tl-assign-mode')||{}).value||'internal';
   var carrierId=(document.getElementById('tl-carrier-sel')||{}).value||'';
   var carrierRef=((document.getElementById('tl-carrier-ref')||{}).value||'').trim();
@@ -5813,9 +6006,12 @@ function tmsAddLoad(postToBoard){
     carrierName:carrierObj?carrierObj.companyName:'',
     carrierRef:carrierRef,carrierCost:0,
     trackingEnabled:!!(trk),lastGpsLat:0,lastGpsLng:0,lastGpsTimestamp:'',gpsHeading:0,gpsSpeedKph:0,
-    legs:[],isSplit:false,parentShipmentId:null,splitIndex:null,splitOf:null
+    legs:[],isSplit:false,parentShipmentId:null,splitIndex:null,splitOf:null,
+    paps:paps||''
   };
   D.loads.push(load);
+  tmsSaveLocation(orig);
+  tmsSaveLocation(dest);
   if(!isOutsourced&&drv){
     var dObj=D.drivers.find(function(x){return x.name===drv;});
     if(dObj){
@@ -5973,6 +6169,7 @@ function tmsViewLoad(id){
   '<div class="tms-detail-row"><span class="tms-detail-lbl">Revenue</span><span class="tms-detail-val" style="color:var(--accent2)">$'+l.revenue.toLocaleString()+'</span></div>'+
   (l.pickupDate?'<div class="tms-detail-row"><span class="tms-detail-lbl">Pickup Date</span><span class="tms-detail-val">'+l.pickupDate+'</span></div>':'')+
   (l.deliveryDate?'<div class="tms-detail-row"><span class="tms-detail-lbl">Delivery Date</span><span class="tms-detail-val">'+l.deliveryDate+'</span></div>':'')+
+  (l.paps?'<div class="tms-detail-row"><span class="tms-detail-lbl">PAPS Number</span><span class="tms-detail-val" style="color:var(--accent2);font-family:monospace;letter-spacing:0.05em">'+l.paps+'</span></div>':'')+
   '<div class="tms-detail-row"><span class="tms-detail-lbl">Created</span><span class="tms-detail-val">'+l.created+'</span></div>'+
   '<div class="tms-detail-row"><span class="tms-detail-lbl">Status</span><span class="tms-detail-val"><select onchange="tmsUpdateStatus(\''+l.id+'\',this.value)" style="background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:6px">'+statusOpts+'</select></span></div>'+
   (l.lastGpsLat?'<div class="tms-detail-row"><span class="tms-detail-lbl">Last GPS</span><span class="tms-detail-val" style="color:var(--accent2)">'+l.lastGpsLat.toFixed(4)+', '+l.lastGpsLng.toFixed(4)+' · '+(l.gpsSpeedKph>0?l.gpsSpeedKph.toFixed(0)+' km/h':'Parked')+(l.lastGpsTimestamp?' · '+new Date(l.lastGpsTimestamp).toLocaleTimeString():'')+'</span></div>':'')+
@@ -6123,6 +6320,7 @@ function tmsEditLoad(id){
   '<div><label class="tms-label">Commodity</label><input class="tms-input" id="el-commodity" value="'+(l.commodity||'')+'"></div>'+
   '<div><label class="tms-label">Weight</label><input class="tms-input" id="el-weight" value="'+(l.weight||'')+'"></div>'+
   '<div><label class="tms-label">Revenue ($)</label><input class="tms-input" id="el-revenue" type="number" value="'+(l.revenue||0)+'"></div>'+
+  '<div><label class="tms-label">PAPS Number <span style="font-size:9px;color:var(--text3)">(optional)</span></label><input class="tms-input" id="el-paps" value="'+(l.paps||'')+'"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Notes</label><textarea class="tms-input" id="el-notes" rows="3" style="width:100%;resize:vertical">'+(l.notes||'')+'</textarea></div>'+
   '</div>'+
   '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">'+
@@ -6130,6 +6328,10 @@ function tmsEditLoad(id){
   '<button class="tms-btn primary" onclick="tmsSaveLoad(\''+id+'\')">💾 Save Changes</button>'+
   '</div></div>';
   document.body.appendChild(overlay);
+  setTimeout(function(){
+    var o=document.getElementById('el-origin');if(o)tmsBindAC(o);
+    var d=document.getElementById('el-dest');if(d)tmsBindAC(d);
+  },0);
 }
 function tmsSaveLoad(id){
   var D=window.TMS_DATA;
@@ -6146,6 +6348,8 @@ function tmsSaveLoad(id){
   l.weight=document.getElementById('el-weight').value||l.weight;
   l.revenue=parseFloat(document.getElementById('el-revenue').value)||l.revenue;
   l.notes=document.getElementById('el-notes').value;
+  var elPaps=document.getElementById('el-paps');
+  if(elPaps)l.paps=elPaps.value.trim()||l.paps||'';
   _fbPushTMS();
   document.getElementById('edit-load-overlay').remove();
   sfxSuccess();toast('Load updated · '+id);
@@ -8513,6 +8717,7 @@ function vfDeleteReq(i){
 function tmsInvoices(){
   var D=window.TMS_DATA;
   if(!D.clientInvoices)D.clientInvoices=[];
+  if(!D.pendingInvoiceLoads)D.pendingInvoiceLoads=[];
   var totalOwed=D.clientInvoices.filter(function(i){return i.status!=='Paid';}).reduce(function(s,i){return s+(parseFloat(i.amount)||0);},0);
   var invCards=D.clientInvoices.slice().reverse().map(function(inv,i){
     var idx=D.clientInvoices.indexOf(inv);
@@ -8520,7 +8725,7 @@ function tmsInvoices(){
     return '<div style="background:var(--surface);border:0.5px solid '+(paid?'var(--border)':'rgba(224,123,32,0.25)')+';border-radius:12px;padding:14px 16px;margin-bottom:10px">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'+
       '<div style="flex:1">'+
-      '<div style="font-size:10px;color:var(--accent);letter-spacing:0.08em;margin-bottom:4px">'+inv.clientName+' · '+inv.date+'</div>'+
+      '<div style="font-size:10px;color:var(--accent);letter-spacing:0.08em;margin-bottom:4px">'+inv.clientName+' · '+inv.date+(inv.loadId?'<span style="color:var(--text3);margin-left:8px">'+inv.loadId+'</span>':'')+'</div>'+
       '<div style="font-size:12px;color:var(--text)">'+inv.description+'</div>'+
       '</div>'+
       '<div style="text-align:right">'+
@@ -8535,26 +8740,58 @@ function tmsInvoices(){
   }).join('');
   var clientNames=[...new Set((TOI_USERS||[]).filter(function(u){return u.role==='clientportal';}).map(function(u){return u.name;}))];
   var clientOpts=clientNames.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+  /* Pending invoice rows */
+  var pendingRows=D.pendingInvoiceLoads.map(function(p){
+    var orig=(p.origin||'').split(',')[0];var dst=(p.dest||'').split(',')[0];
+    return '<div class="pinv-row">'+
+      '<div class="pinv-info">'+
+      '<div class="pinv-id">'+p.loadId+(p.ref&&p.ref!==p.loadId?' · '+p.ref:'')+'</div>'+
+      '<div class="pinv-route">'+p.customer+' — '+orig+' → '+dst+'</div>'+
+      '<div style="font-size:10px;color:var(--text3);margin-top:2px">Delivered '+p.deliveredDate+' · $'+(p.revenue||0).toLocaleString()+'</div>'+
+      '</div>'+
+      '<button class="tms-btn primary" style="font-size:10px;padding:6px 14px;white-space:nowrap;flex-shrink:0" onclick="vfOpenInvoiceBuilder(\''+p.loadId+'\')">Create Invoice →</button>'+
+      '</div>';
+  }).join('');
   var bdy=document.getElementById('tms-body');
   bdy.innerHTML=
     '<div style="display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap">'+
     '<div class="tms-kpi"><div class="tms-kpi-lbl">Outstanding</div><div class="tms-kpi-val" style="color:var(--accent)">$'+totalOwed.toFixed(2)+'</div></div>'+
     '<div class="tms-kpi"><div class="tms-kpi-lbl">Total Invoices</div><div class="tms-kpi-val">'+D.clientInvoices.length+'</div></div>'+
+    '<div class="tms-kpi"><div class="tms-kpi-lbl">Needs Invoice</div><div class="tms-kpi-val" style="color:'+(D.pendingInvoiceLoads.length?'var(--accent3)':'var(--text3)')+'">'+D.pendingInvoiceLoads.length+'</div></div>'+
     '</div>'+
-    '<div class="tms-section-title" style="font-size:12px">Create Invoice</div>'+
+    (D.pendingInvoiceLoads.length?'<div class="tms-section-title" style="font-size:12px;color:var(--accent3)">⚠ Delivered — Awaiting Invoice ('+D.pendingInvoiceLoads.length+')</div>'+pendingRows:'') +
+    '<div class="tms-section-title" style="font-size:12px;margin-top:4px">Create Invoice</div>'+
     '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">'+
     '<div style="flex:1;min-width:140px"><div style="font-size:9px;color:var(--text3);margin-bottom:5px;letter-spacing:0.08em">CLIENT</div>'+
     '<select class="tms-input" id="inv-client" style="width:100%;padding:6px 10px;font-size:11px">'+
     '<option value="">Select client…</option>'+clientOpts+
     '</select></div>'+
     '<div style="flex:1;min-width:180px"><div style="font-size:9px;color:var(--text3);margin-bottom:5px;letter-spacing:0.08em">DESCRIPTION</div>'+
-    '<input class="tms-input" id="inv-desc" placeholder="Parts order, labor, etc." style="width:100%;padding:6px 10px;font-size:11px"></div>'+
+    '<input class="tms-input" id="inv-desc" placeholder="Freight service, load ID, etc." style="width:100%;padding:6px 10px;font-size:11px"></div>'+
     '<div style="flex:0 0 110px"><div style="font-size:9px;color:var(--text3);margin-bottom:5px;letter-spacing:0.08em">AMOUNT ($)</div>'+
     '<input class="tms-input" id="inv-amount" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:6px 10px;font-size:11px"></div>'+
+    '<input type="hidden" id="inv-load-id" value="">'+
     '<button class="tms-btn primary" onclick="vfCreateInvoice()" style="white-space:nowrap;padding:7px 18px">+ Create</button>'+
     '</div>'+
     '<div class="tms-section-title" style="font-size:12px">All Invoices</div>'+
     (D.clientInvoices.length?invCards:'<div style="font-size:12px;color:var(--text3);padding:8px 0">No invoices yet.</div>');
+}
+function vfOpenInvoiceBuilder(loadId){
+  var D=window.TMS_DATA;
+  var p=(D.pendingInvoiceLoads||[]).find(function(x){return x.loadId===loadId;});
+  if(!p)return;
+  var orig=(p.origin||'').split(',')[0];var dst=(p.dest||'').split(',')[0];
+  var desc='Freight service — '+p.loadId+' ('+orig+' → '+dst+')';
+  var clientEl=document.getElementById('inv-client');
+  var descEl=document.getElementById('inv-desc');
+  var amtEl=document.getElementById('inv-amount');
+  var lidEl=document.getElementById('inv-load-id');
+  if(clientEl){[].forEach.call(clientEl.options,function(o){if(o.value.toLowerCase()===p.customer.toLowerCase())o.selected=true;});}
+  if(descEl)descEl.value=desc;
+  if(amtEl)amtEl.value=p.revenue||0;
+  if(lidEl)lidEl.value=loadId;
+  descEl&&descEl.scrollIntoView({behavior:'smooth',block:'center'});
+  sfxPop&&sfxPop();
 }
 function vfCreateInvoice(){
   var client=document.getElementById('inv-client').value.trim();
@@ -8563,7 +8800,9 @@ function vfCreateInvoice(){
   if(!client||!desc||!amount){sfxError();toast('Fill in all fields');return;}
   var D=window.TMS_DATA;
   if(!D.clientInvoices)D.clientInvoices=[];
-  D.clientInvoices.push({id:'INV-'+Date.now(),clientName:client,description:desc,amount:amount,status:'Unpaid',date:new Date().toLocaleDateString()});
+  var loadId=(document.getElementById('inv-load-id')||{}).value||'';
+  D.clientInvoices.push({id:'INV-'+Date.now(),clientName:client,description:desc,amount:amount,status:'Unpaid',date:new Date().toLocaleDateString(),loadId:loadId||undefined});
+  if(loadId)_removePendingInvoice(loadId);
   if(typeof _fbPushTMS==='function')_fbPushTMS();
   sfxSuccess();toast('Invoice created');
   tmsInvoices();
@@ -8790,6 +9029,7 @@ function tmsUpdateStatus(loadId,status){
       dObj.status='Available';dObj.load=null;
     }
     D.finances.revenue=(D.finances.revenue||0)+load.revenue;
+    _markLoadPendingInvoice(load);
   }
   /* Notify customer by email on every status change — check preferredEmail first, then billing email */
   if(load.customer&&load.customer!=='—'){
