@@ -1066,22 +1066,6 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
     <div class="greeting-sub">Select a module.</div>
     <div class="sel-grid">
       <div class="sel-card-wrap">
-        <div class="sel-card ripple-wrap" onmouseenter="sfxHover()" onclick="openMod('personal');ripple(this,event)">
-          <div class="sel-ic">👤</div>
-          <div class="sel-name">Personal</div>
-          <div class="sel-desc">Health, finances, memories and more.</div>
-          <div class="c-shine"></div>
-        </div>
-        <div class="hover-popup">
-          <div class="hover-popup-title">Modules</div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Memories</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Translate</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Health</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Finances</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Permits</span></div>
-        </div>
-      </div>
-      <div class="sel-card-wrap">
         <div class="sel-card ripple-wrap" onmouseenter="sfxHover()" onclick="openMod('business');ripple(this,event)">
           <div class="sel-ic">🏢</div>
           <div class="sel-name">Business</div>
@@ -1090,26 +1074,10 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
         </div>
         <div class="hover-popup">
           <div class="hover-popup-title">Modules</div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Software</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Entertainment</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Value Fleet</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Trading</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Real Estate · Finance · more</span></div>
-        </div>
-      </div>
-      <div class="sel-card-wrap">
-        <div class="sel-card ripple-wrap" onmouseenter="sfxHover()" onclick="openMod('chat');ripple(this,event)">
-          <div class="sel-ic">💬</div>
-          <div class="sel-name">Chat</div>
-          <div class="sel-desc">Talk directly to rono.v1.</div>
-          <div class="c-shine"></div>
-        </div>
-        <div class="hover-popup">
-          <div class="hover-popup-title">Features</div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Voice input</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">AI voice output</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Export conversation</span></div>
-          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Full context memory</span></div>
+          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Supply Chain</span></div>
+          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Finance</span></div>
+          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Legal</span></div>
+          <div class="hover-popup-item"><div class="hover-popup-dot"></div><span class="hover-popup-text">Overview</span></div>
         </div>
       </div>
       <div class="sel-card-wrap" id="admin-card-wrap" style="display:none;">
@@ -1885,10 +1853,9 @@ async function speakAI(text){
    AUTH
    ════════════════════════════════════════ */
 function seedDefaultUsers(){
-  var allP=['memories','translate','health','finances','permits','legal'];
-  var allB=['software','codestudio','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','clothes','food','fitness','bizlegal'];
-  var full={all:true,chat:true,personal:allP,business:allB};
-  var empAcc={tms:true,chat:false,personal:[],business:['supplychain']};
+  var allB=['supplychain','bizfinance','bizoverview','bizlegal'];
+  var full={all:true,business:allB};
+  var empAcc={tms:true,business:['supplychain']};
   TOI_USERS=[
     {id:'u_ahsan',name:'Ahsan',password:'qysbAh-ramjeg-wizki8',role:'superadmin',access:full,phone:'+14389220274',twoFA:false},
     /* Employee — dispatch operations only */
@@ -1945,7 +1912,7 @@ function tryLogin(){
   if(!TOI_USERS.length)seedDefaultUsers();
   else patchUsers();
   var found=TOI_USERS.find(function(u){return u.password===v;});
-  if(!found&&v===PW)found={id:'u_ahsan',name:'Ahsan',role:'superadmin',password:'qysbAh-ramjeg-wizki8',access:{all:true,chat:true},phone:'+14389220274',twoFA:false};
+  if(!found&&v===PW)found={id:'u_ahsan',name:'Ahsan',role:'superadmin',password:'qysbAh-ramjeg-wizki8',access:{all:true},phone:'+14389220274',twoFA:false};
   if(found){
     document.getElementById('lpw').value='';
     if(found.twoFA&&found.phone){
@@ -2112,7 +2079,7 @@ async function loginWithTouchID(){
     /* Biometric passed — find the user and log in */
     if(!TOI_USERS.length)seedDefaultUsers();else patchUsers();
     var user=TOI_USERS.find(function(u){return u.id===store.userId;});
-    if(!user&&store.userId==='u_ahsan')user={id:'u_ahsan',name:'Ahsan',role:'superadmin',password:'qysbAh-ramjeg-wizki8',access:{all:true,chat:true},phone:'+14389220274',twoFA:false};
+    if(!user&&store.userId==='u_ahsan')user={id:'u_ahsan',name:'Ahsan',role:'superadmin',password:'qysbAh-ramjeg-wizki8',access:{all:true},phone:'+14389220274',twoFA:false};
     if(user){
       completeLogin(user);
     }else{sfxError();toast('User not found — log in with your passkey');}
@@ -2167,12 +2134,8 @@ function applyClientAccess(){
     subMenuCache={};return;
   }
   var acc=currentUser.access||{};
-  var pCard=document.querySelector('.sel-card[onclick*="personal"]');
   var bCard=document.querySelector('.sel-card[onclick*="business"]');
-  var cCard=document.querySelector('.sel-card[onclick*="chat"]');
-  if(pCard)pCard.closest('.sel-card-wrap').style.display=(acc.personal&&acc.personal.length)?'':'none';
   if(bCard)bCard.closest('.sel-card-wrap').style.display=(acc.business&&acc.business.length)?'':'none';
-  if(cCard)cCard.closest('.sel-card-wrap').style.display=acc.chat?'':'none';
   subMenuCache={};
 }
 var _ss=document.createElement('style');
@@ -2188,26 +2151,15 @@ var DEMO_DURATION=5800;
 
 var _demoSlides=[
   {
-    tag:'WHAT IS TOI.AI',title:'One platform. Every part of your life.',
-    body:'PackFast TMS — your dispatch and operations platform — personal life, business operations, full logistics TMS — all running directly in your browser. No servers. No subscriptions. No data leaks. Powered by Claude AI.',
+    tag:'WHAT IS PACKFAST',title:'Your logistics command centre.',
+    body:'PackFast TMS — your dispatch and operations platform — full logistics TMS running directly in your browser. No servers. No subscriptions. No data leaks. Powered by Claude AI.',
     visual:'<div style="background:#050508;border-radius:12px;padding:16px;border:0.5px solid rgba(224,123,32,0.15)">'
-      +'<div style="text-align:center;margin-bottom:12px"><span style="font-size:22px;font-weight:200;color:#e8e0ff;letter-spacing:0.1em">toi<span style="color:#e07b20">.</span>ai</span><div style="font-size:8px;letter-spacing:0.2em;color:rgba(224,123,32,0.5);margin-top:2px">rono.v1</div></div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">'
-      +'<div style="background:#0b0b14;border:0.5px solid rgba(224,123,32,0.25);border-radius:8px;padding:12px 8px;text-align:center;animation:contentIn 0.3s ease both"><div style="font-size:20px">👤</div><div style="font-size:9px;color:#f0eeff;margin-top:4px">Personal</div><div style="font-size:8px;color:#7a78a0;margin-top:1px">Health · Finance</div></div>'
-      +'<div style="background:#0b0b14;border:0.5px solid rgba(224,123,32,0.25);border-radius:8px;padding:12px 8px;text-align:center;animation:contentIn 0.35s ease both"><div style="font-size:20px">🏢</div><div style="font-size:9px;color:#f0eeff;margin-top:4px">Business</div><div style="font-size:8px;color:#7a78a0;margin-top:1px">TMS · Trading</div></div>'
-      +'<div style="background:#0b0b14;border:0.5px solid rgba(224,123,32,0.25);border-radius:8px;padding:12px 8px;text-align:center;animation:contentIn 0.4s ease both"><div style="font-size:20px">💬</div><div style="font-size:9px;color:#f0eeff;margin-top:4px">Chat</div><div style="font-size:8px;color:#7a78a0;margin-top:1px">rono.v1 AI</div></div>'
+      +'<div style="text-align:center;margin-bottom:12px"><span style="font-size:22px;font-weight:200;color:#e8e0ff;letter-spacing:0.1em">Pack<span style="color:#e07b20">Fast</span></span><div style="font-size:8px;letter-spacing:0.2em;color:rgba(224,123,32,0.5);margin-top:2px">TMS · rono.v1</div></div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">'
+      +'<div style="background:#0b0b14;border:0.5px solid rgba(224,123,32,0.25);border-radius:8px;padding:12px 8px;text-align:center;animation:contentIn 0.3s ease both"><div style="font-size:20px">🚛</div><div style="font-size:9px;color:#f0eeff;margin-top:4px">Supply Chain</div><div style="font-size:8px;color:#7a78a0;margin-top:1px">TMS · Dispatch · Fleet</div></div>'
+      +'<div style="background:#0b0b14;border:0.5px solid rgba(224,123,32,0.25);border-radius:8px;padding:12px 8px;text-align:center;animation:contentIn 0.35s ease both"><div style="font-size:20px">🏢</div><div style="font-size:9px;color:#f0eeff;margin-top:4px">Business</div><div style="font-size:8px;color:#7a78a0;margin-top:1px">Finance · Legal · Overview</div></div>'
       +'</div>'
       +'<div style="margin-top:10px;background:rgba(245,166,35,0.06);border:0.5px solid rgba(245,166,35,0.15);border-radius:6px;padding:7px 10px;font-size:9px;color:#f5a623;text-align:center;letter-spacing:0.08em">✓ Runs 100% in your browser · No server · No storage</div>'
-      +'</div>'
-  },
-  {
-    tag:'PERSONAL MODULES',title:'Your personal command centre.',
-    body:'Drop a medical PDF and get a full AI health breakdown. Import your bank CSV for an instant tax summary. Translate 40+ languages with your voice. Store memories with AI context. Track permits with auto-renewal alerts.',
-    visual:'<div style="display:flex;flex-direction:column;gap:6px">'
-      +'<div style="background:#050508;border:0.5px solid rgba(255,255,255,0.06);border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:10px;animation:contentIn 0.25s ease both"><span style="font-size:18px">❤️</span><div><div style="font-size:11px;color:#f0eeff">Health Report</div><div style="font-size:9px;color:#f5a623;margin-top:1px">✓ PDF analysed · 6 sections · 2 red flags detected</div></div></div>'
-      +'<div style="background:#050508;border:0.5px solid rgba(255,255,255,0.06);border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:10px;animation:contentIn 0.32s ease both"><span style="font-size:18px">💰</span><div><div style="font-size:11px;color:#f0eeff">Personal Finance</div><div style="font-size:9px;color:#f5a623;margin-top:1px">✓ 147 transactions · $4,200 deductible found</div></div></div>'
-      +'<div style="background:#050508;border:0.5px solid rgba(255,255,255,0.06);border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:10px;animation:contentIn 0.39s ease both"><span style="font-size:18px">🌐</span><div><div style="font-size:11px;color:#f0eeff">Translate</div><div style="font-size:9px;color:#7a78a0;margin-top:1px">EN → AR · FR · UR · ZH · 40+ languages · voice in/out</div></div></div>'
-      +'<div style="background:#050508;border:0.5px solid rgba(255,255,255,0.06);border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:10px;animation:contentIn 0.46s ease both"><span style="font-size:18px">⚖️</span><div><div style="font-size:11px;color:#f0eeff">Legal Advisor</div><div style="font-size:9px;color:#7a78a0;margin-top:1px">Review contracts · understand rights · draft documents</div></div></div>'
       +'</div>'
   },
   {
@@ -2250,24 +2202,6 @@ var _demoSlides=[
       +'</div>'
   },
   {
-    tag:'BUSINESS SUITE',title:'Every vertical. AI-native.',
-    body:'Trading with live market data. Real estate portfolio tracker. Clothes design studio with AI visualization and sourcing. Code Studio with AI pair programming. Software builder. Food & fitness brand tools. All in the same platform.',
-    visual:'<div style="background:#050508;border-radius:12px;overflow:hidden;border:0.5px solid rgba(255,255,255,0.06)">'
-      +'<div style="padding:8px 12px;font-size:8px;color:#7a78a0;letter-spacing:0.12em;border-bottom:0.5px solid rgba(255,255,255,0.05);background:#0b0b14">BUSINESS MODULES</div>'
-      +'<div style="padding:8px">'
-      +'<div style="font-size:8px;color:#7a78a0;letter-spacing:0.1em;padding:4px 8px;margin-bottom:2px">OPERATIONS</div>'
-      +'<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;background:rgba(224,123,32,0.05)"><span style="font-size:14px">🔩</span><div style="flex:1"><div style="font-size:9px;color:#f0eeff">Value Fleet</div><div style="font-size:8px;color:#7a78a0">Parts · Expenses · Payments · TMS</div></div><span style="font-size:10px;color:#7a78a0">›</span></div>'
-      +'<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px"><span style="font-size:14px">📊</span><div style="flex:1"><div style="font-size:9px;color:#f0eeff">Overview</div><div style="font-size:8px;color:#7a78a0">All finances · birds-eye view</div></div><span style="font-size:10px;color:#7a78a0">›</span></div>'
-      +'<div style="font-size:8px;color:#7a78a0;letter-spacing:0.1em;padding:4px 8px;margin-top:4px;margin-bottom:2px">MARKETS</div>'
-      +'<div style="display:flex;gap:5px">'
-      +'<div style="flex:1;background:#0b0b14;border-radius:6px;padding:7px;text-align:center"><div style="font-size:13px">📈</div><div style="font-size:8px;color:#7a78a0;margin-top:2px">Trading</div></div>'
-      +'<div style="flex:1;background:#0b0b14;border-radius:6px;padding:7px;text-align:center"><div style="font-size:13px">👗</div><div style="font-size:8px;color:#7a78a0;margin-top:2px">Clothes</div></div>'
-      +'<div style="flex:1;background:#0b0b14;border-radius:6px;padding:7px;text-align:center"><div style="font-size:13px">🏠</div><div style="font-size:8px;color:#7a78a0;margin-top:2px">Real Estate</div></div>'
-      +'<div style="flex:1;background:#0b0b14;border-radius:6px;padding:7px;text-align:center"><div style="font-size:13px">💻</div><div style="font-size:8px;color:#7a78a0;margin-top:2px">Code</div></div>'
-      +'</div>'
-      +'</div></div>'
-  },
-  {
     tag:'AI VOICE · MULTI-USER',title:'Speak to it. Share it.',
     body:'Every module has a floating voice assistant — tap the mic, ask a question, get a spoken answer. Rono adapts to you over time with persistent memory. Multi-user role system means your team only sees what they need.',
     visual:'<div style="display:flex;flex-direction:column;gap:8px">'
@@ -2308,10 +2242,9 @@ var _demoSlides=[
       +'</div></div>'
   },
   {
-    tag:'GET ACCESS',title:'Three plans. Instant access.',
-    body:'Start with Personal for all personal life modules. Step up to Business for the full TMS, multi-user access, and every business vertical. Need a white-label or custom build? Enterprise is built for you.',
+    tag:'GET ACCESS',title:'Two plans. Instant access.',
+    body:'Get Business for the full TMS, supply chain, invoicing, multi-user access, and every business module. Need a white-label or custom build? Enterprise is built for you.',
     visual:'<div style="display:flex;flex-direction:column;gap:7px">'
-      +'<div style="background:#050508;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:9px;color:#7a78a0;letter-spacing:0.1em;margin-bottom:3px">PERSONAL</div><div style="font-size:18px;color:#f0eeff;font-weight:300">$49<span style="font-size:11px;color:#7a78a0">/mo</span></div><div style="font-size:8px;color:#7a78a0;margin-top:2px">Health · Finance · Legal · Translate</div></div><div style="font-size:8px;background:rgba(224,123,32,0.12);border:0.5px solid rgba(224,123,32,0.3);color:#e07b20;padding:5px 12px;border-radius:16px;cursor:pointer">Get Personal</div></div>'
       +'<div style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.4);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;position:relative"><div style="position:absolute;top:-8px;left:50%;transform:translateX(-50%);background:#e07b20;color:#fff;font-size:7px;font-weight:700;padding:2px 10px;border-radius:8px;letter-spacing:0.1em;white-space:nowrap">MOST POPULAR</div><div><div style="font-size:9px;color:#f5a623;letter-spacing:0.1em;margin-bottom:3px">BUSINESS</div><div style="font-size:18px;color:#f0eeff;font-weight:300">$149<span style="font-size:11px;color:#7a78a0">/mo</span></div><div style="font-size:8px;color:#7a78a0;margin-top:2px">Full TMS · All modules · 10 users</div></div><div style="font-size:8px;background:#e07b20;color:#fff;padding:5px 12px;border-radius:16px;cursor:pointer;font-weight:500">Get Business</div></div>'
       +'<div style="background:#050508;border:0.5px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:9px;color:#7a78a0;letter-spacing:0.1em;margin-bottom:3px">ENTERPRISE</div><div style="font-size:18px;color:#f0eeff;font-weight:300">Custom</div><div style="font-size:8px;color:#7a78a0;margin-top:2px">White-label · Custom modules · Unlimited</div></div><div style="font-size:8px;background:rgba(245,166,35,0.1);border:0.5px solid rgba(245,166,35,0.25);color:#f5a623;padding:5px 12px;border-radius:16px;cursor:pointer">Contact Us</div></div>'
       +'</div>'
@@ -2392,31 +2325,20 @@ function getStripeConfig(){try{return JSON.parse(localStorage.getItem('STRIPE_CF
 function saveStripeConfig(cfg){localStorage.setItem('STRIPE_CFG',JSON.stringify(cfg));}
 function renderStripeButtons(){
   var cfg=getStripeConfig();
-  var slots={personal:'stripe-btn-personal',business:'stripe-btn-business'};
-  var styles={
-    personal:'width:100%;background:rgba(224,123,32,0.12);border:0.5px solid rgba(224,123,32,0.3);color:var(--accent);font-size:12px;padding:10px;border-radius:8px;cursor:pointer',
-    business:'width:100%;background:var(--accent);border:none;color:#fff;font-size:12px;padding:10px;border-radius:8px;cursor:pointer;font-weight:500'
-  };
-  var labels={personal:'Get Personal',business:'Get Business'};
-  ['personal','business'].forEach(function(plan){
-    var el=document.getElementById(slots[plan]);
-    if(!el)return;
-    var pubKey=cfg.publishableKey;
-    var btnId=plan==='personal'?cfg.personalBtnId:cfg.businessBtnId;
-    if(pubKey&&btnId){
-      /* Render live Stripe Buy Button */
-      el.innerHTML='<stripe-buy-button buy-button-id="'+btnId+'" publishable-key="'+pubKey+'"></stripe-buy-button>';
-    } else {
-      /* Fallback: mailto / toast */
-      el.innerHTML='<button onclick="landingPaymentFallback(\''+plan+'\')" style="'+styles[plan]+'">'+labels[plan]+'</button>';
-    }
-  });
+  var el=document.getElementById('stripe-btn-business');
+  if(!el)return;
+  var pubKey=cfg.publishableKey;
+  var btnId=cfg.businessBtnId;
+  if(pubKey&&btnId){
+    el.innerHTML='<stripe-buy-button buy-button-id="'+btnId+'" publishable-key="'+pubKey+'"></stripe-buy-button>';
+  } else {
+    el.innerHTML='<button onclick="landingPaymentFallback(\'business\')" style="width:100%;background:var(--accent);border:none;color:#fff;font-size:12px;padding:10px;border-radius:8px;cursor:pointer;font-weight:500">Get Business</button>';
+  }
 }
 function landingPaymentFallback(plan){
   if(plan==='enterprise'){window.location.href='mailto:ahsan.ahmed@pf-canada.com?subject=PackFast%20Enterprise%20Inquiry';return;}
-  /* Try payment link as secondary option */
   var cfg=getStripeConfig();
-  var url=plan==='personal'?cfg.personalLink:cfg.businessLink;
+  var url=cfg.businessLink;
   if(url&&url.length>10){window.open(url,'_blank');return;}
   toast('Payment not set up yet — sign in and contact your admin');
 }
@@ -2555,7 +2477,7 @@ function showFloatHome(visible){
    ════════════════════════════════════════ */
 function openMod(m){
   curMod=m;sfxNav();
-  var pills={chat:'Chat · rono.v1',personal:'Personal · rono.v1',business:'Business · rono.v1',admin:'Admin · rono.v1',driver:'Driver Portal · rono.v1',clientportal:'Value Fleet Portal · rono.v1'};
+  var pills={business:'Business · rono.v1',admin:'Admin · rono.v1',driver:'Driver Portal · rono.v1',clientportal:'Value Fleet Portal · rono.v1'};
   var pill=document.getElementById('mod-pill');
   pill.textContent=pills[m]||'rono.v1';
   pill.classList.add('active');
@@ -2563,9 +2485,7 @@ function openMod(m){
   backTarget='select';
   showFloatHome(true);
   subMenuCache={};
-  if(m==='chat')renderChat();
-  else if(m==='personal')renderSubmenu('personal');
-  else if(m==='business')renderSubmenu('business');
+  if(m==='business')renderSubmenu('business');
   else if(m==='admin'){if(currentUser&&(currentUser.role==='client-partner'||currentUser.role==='employee'||currentUser.role==='driver')){sfxError();toast('Access restricted');return;}renderAdmin();}
   else if(m==='driver'){
     var c=document.getElementById('content');
@@ -2591,34 +2511,15 @@ function _animContent(){
 function openSub(key){
   curSub=key;sfxNav();
   backTarget='submenu';
-  var bLabel=curMod==='personal'?'Personal':'Business';
-  document.getElementById('back-btn').textContent='← '+bLabel;
-  var labels={goals:'Goals',translate:'Translate',health:'Health',finances:'Finances',permits:'Permits',memories:'Memories',software:'Software',entertainment:'Entertainment',supplychain:'Supply Chain',valuefleet:'Value Fleet',tech:'Tech',trading:'Trading',realestate:'Real Estate',bizfinance:'Finance',bizoverview:'Overview',clothes:'Clothes',food:'Food',fitness:'Fitness',wisdom:'Wisdom',legal:'Legal',bizlegal:'Legal'};
+  document.getElementById('back-btn').textContent='← Business';
+  var labels={supplychain:'Supply Chain',bizfinance:'Finance',bizoverview:'Overview',bizlegal:'Legal'};
   var pill=document.getElementById('mod-pill');
   pill.textContent=(labels[key]||key)+' · rono.v1';
   pill.classList.add('active');
-  if(key==='translate')renderTranslate();
-  else if(key==='finances')renderFinance();
-  else if(key==='bizfinance')renderBizFinance();
-  else if(key==='health')renderHealth();
-  else if(key==='memories')renderMemories();
-  else if(key==='permits')renderPermits();
-  else if(key==='wisdom')renderWisdomChat();
-  else if(key==='software')renderSoftware();
-  else if(key==='codestudio')renderCodeStudio();
+  if(key==='bizfinance')renderBizFinance();
   else if(key==='supplychain')renderSupplyChain();
-  else if(key==='valuefleet')renderValueFleet();
-  else if(key==='clothes')renderClothes();
-  else if(key==='trading')renderTrading();
-  else if(key==='tech')renderTech();
-  else if(key==='entertainment')renderEntertainment();
-  else if(key==='realestate')renderRealEstate();
-  else if(key==='food')renderFood();
-  else if(key==='fitness')renderFitness();
-  else if(key==='legal')renderLegal();
   else if(key==='bizlegal')renderBizLegal();
   else if(key==='bizoverview')renderBizOverview();
-  else if(key==='goals')renderGoals();
   else renderPlaceholder(labels[key]||key,key);
   _animContent();
 }
@@ -2629,136 +2530,54 @@ function openSub(key){
 function renderSubmenu(mod){
   var ca=document.getElementById('content');
   if(subMenuCache[mod]){ca.innerHTML=subMenuCache[mod];return;}
-  var allPersonal=[
-    {key:'goals',ic:'🎯',name:'Goals',tag:'Daily intentions · track'},
-    {key:'memories',ic:'🧠',name:'Memories',tag:'Photos · auto-categorized'},
-    {key:'translate',ic:'🌐',name:'Translate',tag:'Any language · auto'},
-    {key:'health',ic:'❤️',name:'Health',tag:'Drop PDF · AI analysis'},
-    {key:'finances',ic:'💰',name:'Finances',tag:'Bank import · tax summary'},
-    {key:'permits',ic:'📋',name:'Permits',tag:'Renewal tracker · alerts'},
-    {key:'legal',ic:'⚖️',name:'Legal',tag:'Virtual lawyer · 1-on-1'},
-  ];
   var allBusiness=[
-    {key:'software',ic:'💻',name:'Software',tag:'Dev-mode · AI builds'},
-    {key:'codestudio',ic:'</>',name:'Code Studio',tag:'Chat to code · live editor'},
-    {key:'entertainment',ic:'🎮',name:'Entertainment',tag:'Creative sandbox · AI'},
     {key:'supplychain',ic:'🚛',name:'Supply Chain',tag:'Logistics · TMS · dispatch'},
-    {key:'valuefleet',ic:'🔩',name:'Value Fleet',tag:'Parts · Expenses · Payments'},
-    {key:'tech',ic:'⚙️',name:'Tech',tag:'Gadget projects · database'},
-    {key:'trading',ic:'📈',name:'Trading',tag:'Stocks · portfolio · log'},
-    {key:'realestate',ic:'🏠',name:'Real Estate',tag:'Property management'},
     {key:'bizoverview',ic:'📊',name:'Overview',tag:'All finances · birds-eye view'},
     {key:'bizfinance',ic:'💳',name:'Finance',tag:'Bank import · corporate tax'},
-    {key:'clothes',ic:'👗',name:'Clothes',tag:'Design · Source · Build'},
-    {key:'food',ic:'🍽️',name:'Food',tag:'Vision to reality'},
-    {key:'fitness',ic:'💪',name:'Fitness',tag:'Training · tracking · brand'},
     {key:'bizlegal',ic:'⚖️',name:'Legal',tag:'Corporate law · contracts'},
   ];
   var bizCategories=[
-    {label:'Operations',keys:['bizoverview','supplychain','valuefleet','bizfinance','bizlegal']},
-    {label:'Technology',keys:['software','codestudio','tech']},
-    {label:'Markets',keys:['trading','realestate','clothes','food']},
-    {label:'Creative',keys:['entertainment','fitness']},
+    {label:'Operations',keys:['bizoverview','supplychain','bizfinance','bizlegal']},
   ];
-  var items=mod==='personal'?allPersonal:allBusiness;
+  var items=allBusiness;
   if(currentUser&&currentUser.role==='client'){
     var allowed=(currentUser.access&&currentUser.access[mod])||[];
     items=items.filter(function(it){return allowed.indexOf(it.key)!==-1;});
   }
-  var label=mod==='personal'?'Personal':'Business';
   var html='<div class="submenu-wrap"><div class="submenu-inner">';
-  html+='<div class="sub-title">'+label+'</div>';
+  html+='<div class="sub-title">Business</div>';
 
-  if(mod==='business'){
-    /* Grouped compact list layout */
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:4px">';
-    bizCategories.forEach(function(cat){
-      var catItems=cat.keys.map(function(k){return allBusiness.find(function(m){return m.key===k;});}).filter(function(m){
-        if(!m)return false;
-        if(currentUser&&currentUser.role==='client'){
-          var allowed=(currentUser.access&&currentUser.access.business)||[];
-          return allowed.indexOf(m.key)!==-1;
-        }
-        return items.find(function(i){return i.key===m.key;});
-      });
-      if(!catItems.length)return;
-      html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:14px;overflow:hidden">';
-      html+='<div style="padding:12px 16px 8px;font-size:9px;letter-spacing:0.14em;color:var(--text3);text-transform:uppercase;border-bottom:0.5px solid var(--border)">'+cat.label+'</div>';
-      catItems.forEach(function(it){
-        html+='<div class="biz-item" onclick="openSub(\''+it.key+'\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.04);transition:background 0.15s"'+
-        ' onmouseenter="this.style.background=\'rgba(224,123,32,0.06)\'" onmouseleave="this.style.background=\'\'">';
-        html+='<div style="font-size:20px;width:28px;text-align:center;flex-shrink:0">'+it.ic+'</div>';
-        html+='<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);font-weight:400">'+it.name+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+it.tag+'</div></div>';
-        html+='<div style="font-size:12px;color:var(--text3);opacity:0.4">›</div>';
-        html+='</div>';
-      });
+  /* Grouped compact list layout */
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:4px">';
+  bizCategories.forEach(function(cat){
+    var catItems=cat.keys.map(function(k){return allBusiness.find(function(m){return m.key===k;});}).filter(function(m){
+      if(!m)return false;
+      if(currentUser&&currentUser.role==='client'){
+        var allowed=(currentUser.access&&currentUser.access.business)||[];
+        return allowed.indexOf(m.key)!==-1;
+      }
+      return items.find(function(i){return i.key===m.key;});
+    });
+    if(!catItems.length)return;
+    html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:14px;overflow:hidden">';
+    html+='<div style="padding:12px 16px 8px;font-size:9px;letter-spacing:0.14em;color:var(--text3);text-transform:uppercase;border-bottom:0.5px solid var(--border)">'+cat.label+'</div>';
+    catItems.forEach(function(it){
+      html+='<div class="biz-item" onclick="openSub(\''+it.key+'\')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:0.5px solid rgba(255,255,255,0.04);transition:background 0.15s"'+
+      ' onmouseenter="this.style.background=\'rgba(224,123,32,0.06)\'" onmouseleave="this.style.background=\'\'">';
+      html+='<div style="font-size:20px;width:28px;text-align:center;flex-shrink:0">'+it.ic+'</div>';
+      html+='<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text);font-weight:400">'+it.name+'</div><div style="font-size:10px;color:var(--text3);margin-top:1px">'+it.tag+'</div></div>';
+      html+='<div style="font-size:12px;color:var(--text3);opacity:0.4">›</div>';
       html+='</div>';
     });
     html+='</div>';
-  }else{
-    /* Personal: keep original card grid */
-    html+='<div class="sub-desc">Select a module.</div>';
-    html+='<div class="sub-grid">';
-    items.forEach(function(it){
-      html+='<div class="sub-card" onclick="openSub(\''+it.key+'\')">';
-      html+='<div class="sub-ic">'+it.ic+'</div>';
-      html+='<div class="sub-name">'+it.name+'</div>';
-      html+='<div class="sub-tag">'+it.tag+'</div>';
-      html+='</div>';
-    });
-    html+='</div>';
-  }
+  });
+  html+='</div>';
 
   html+='</div></div>';
   subMenuCache[mod]=html;
   ca.innerHTML=html;
 }
 
-/* ════════════════════════════════════════
-   CHAT
-   ════════════════════════════════════════ */
-function renderChat(){
-  var h=new Date().getHours();
-  var g=h<12?'Good morning.':h<17?'Good afternoon.':h<21?'Good evening.':'Up late.';
-  document.getElementById('content').innerHTML=
-  '<div class="chat-wrap">'+
-  '<div class="msgs" id="msgs">'+
-  '<div class="welcome" id="welcome">'+
-  '<div class="w-orb">◎</div>'+
-  '<h2>'+g+'</h2>'+
-  '<p>rono.v1 is ready.</p>'+
-  '<p class="w-note">You can be yourself here.</p>'+
-  '<div class="chips">'+
-  '<button class="chip" onclick="suggest(\'What separates winners from everyone else?\')">What separates winners</button>'+
-  '<button class="chip" onclick="suggest(\'How do I stay disciplined when I don\\\'t feel it?\')">Discipline</button>'+
-  '<button class="chip" onclick="suggest(\'What should I build at 22?\')">Life at 22</button>'+
-  '</div></div></div>'+
-  '<div class="input-area">'+
-  '<div class="vlbl" id="vlbl">— listening —</div>'+
-  '<div class="vviz" id="vviz"><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div><div class="vbar"></div></div>'+
-  '<div id="rono-mem-panel" style="display:none;max-height:220px;overflow-y:auto;background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px"></div>'+
-  '<div class="irow">'+
-  '<textarea id="inp" rows="1" placeholder="Ask rono.v1 anything…" onkeydown="handleKey(event)" oninput="rzta(this)"></textarea>'+
-  '<div class="iacts">'+
-  '<button class="ibtn" id="mem-btn" onclick="renderMemoryPanel()" title="Rono memory" style="position:relative"><span style="font-size:11px">🧠</span><span id="rono-mem-count" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--accent);color:#fff;font-size:8px;font-weight:700;border-radius:8px;padding:1px 4px;line-height:1.4;min-width:12px;text-align:center"></span></button>'+
-  '<button class="ibtn" id="micbtn" onclick="toggleVoice()"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><rect x="4.5" y="1" width="5" height="8" rx="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M2 7c0 2.76 2.24 5 5 5s5-2.24 5-5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><line x1="7" y1="12" x2="7" y2="13.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>'+
-  '<button class="sbtn" onclick="sendMsg()"><svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M12 7L2 2l2.5 5L2 12l10-5z" fill="white"/></svg></button>'+
-  '</div></div>'+
-  '<div class="ifooter"><span class="ihint">Enter to send</span><span class="ihint">rono.v1</span></div>'+
-  '</div></div>';
-  /* Show memory badge count if any memories exist */
-  setTimeout(function(){
-    var cnt=getRonoMemory().length;
-    var badge=document.getElementById('rono-mem-count');
-    if(badge){badge.textContent=cnt;badge.style.display=cnt?'':'none';}
-  },50);
-}
-
-function renderWisdomChat(){
-  renderChat();
-  var inp=document.getElementById('inp');if(inp)inp.placeholder='Seek wisdom…';
-  var wh=document.getElementById('welcome');if(wh){var h2=wh.querySelector('h2');if(h2)h2.textContent='Seek wisdom.';}
-}
 
 function ts(){return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
 function rmW(){var w=document.getElementById('welcome');if(w)w.remove();}
@@ -3161,1789 +2980,11 @@ function studioReload(key,idx){
   var bodyEl=document.getElementById('studio-design-body');
   if(designEl&&bodyEl){designEl.classList.add('visible');bodyEl.textContent=item.design;}
 }
-
-/* renderClothes defined in new CLOTHES section below */
-
-/* ════════════════════════════════════════
-   TRADING — Live Stock Data
-   ════════════════════════════════════════ */
-var WATCHLIST=[
-  /* Tech */       'AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AMD','INTC','ORCL','AVGO','QCOM','CRM','ADBE','NFLX',
-  /* Finance */    'JPM','BAC','GS','V','MA','BRK-B','AXP',
-  /* Energy */     'XOM','CVX','SLB','OXY','COP',
-  /* Healthcare */ 'JNJ','PFE','UNH','ABBV','MRK','LLY',
-  /* Transport */  'UNP','FDX','UPS','DAL','UAL','JBHT','ODFL',
-  /* Consumer */   'WMT','COST','TGT','MCD','SBUX','NKE',
-  /* Canadian */   'RY.TO','TD.TO','CNR.TO','CP.TO','SU.TO','ABX.TO','BCE.TO','TRI.TO',
-  /* Crypto */     'BTC-USD','ETH-USD','SOL-USD','BNB-USD','XRP-USD'
-];
-var INDICES=[
-  {sym:'SPY',name:'S&P 500'},
-  {sym:'QQQ',name:'NASDAQ'},
-  {sym:'DIA',name:'DOW'},
-  {sym:'XIU.TO',name:'TSX 60'}
-];
-async function fetchQuote(sym){
-  try{
-    var url='https://corsproxy.io/?url='+encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d');
-    var r=await fetch(url);
-    var d=await r.json();
-    var meta=d.chart.result[0].meta;
-    var closes=d.chart.result[0].indicators.quote[0].close.filter(function(v){return v!==null;});
-    var prev=closes[closes.length-2]||meta.chartPreviousClose||meta.regularMarketPrice;
-    var cur=meta.regularMarketPrice||closes[closes.length-1];
-    var chg=cur-prev;var pct=(chg/prev)*100;
-    return{sym:sym,name:meta.longName||meta.shortName||sym,price:cur,chg:chg,pct:pct,closes:closes};
-  }catch(e){return{sym:sym,name:sym,price:null,chg:0,pct:0,closes:[]};}
-}
-function fmtPrice(p){if(p===null)return '—';return p>100?'$'+p.toFixed(2):'$'+p.toFixed(4);}
-function fmtChg(c,p){
-  var sign=c>=0?'+':'';
-  var cls=c>0.001?'up':c<-0.001?'down':'flat';
-  return '<span class="trading-chg '+cls+'">'+sign+c.toFixed(2)+' ('+sign+p.toFixed(2)+'%)</span>';
-}
-function sparkSVG(closes){
-  if(!closes||closes.length<2)return '';
-  var mn=Math.min.apply(null,closes),mx=Math.max.apply(null,closes);
-  var range=mx-mn||1;
-  var pts=closes.map(function(v,i){
-    var x=(i/(closes.length-1))*58+1;
-    var y=18-((v-mn)/range)*16;
-    return x+','+y;
-  });
-  var col=closes[closes.length-1]>=closes[0]?'#f5a623':'rgba(255,107,107,0.8)';
-  return '<svg class="trading-spark" viewBox="0 0 60 20"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="1.5" stroke-linejoin="round"/></svg>';
-}
-var _tradingTab='market';
-async function renderTrading(){
-  sfxWhoosh();
-  var tabs=[{k:'market',l:'Market'},{k:'trades',l:'My Trades'},{k:'signals',l:'AI Signals'}];
-  var tabBtns=tabs.map(function(t){
-    var on=t.k===_tradingTab;
-    return '<button onclick="switchTradingTab(\''+t.k+'\')" style="background:transparent;border:none;border-bottom:2px solid '+(on?'var(--accent)':'transparent')+';padding:10px 18px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:'+(on?'var(--text)':'var(--text3)')+';cursor:pointer;white-space:nowrap;font-family:inherit;transition:all 0.18s">'+t.l+'</button>';
-  }).join('');
-  document.getElementById('content').innerHTML=
-  '<div style="display:flex;flex-direction:column;height:100%;overflow:hidden">'+
-  /* Indices bar */
-  '<div style="display:flex;gap:0;background:var(--surface2);border-bottom:0.5px solid var(--border);overflow-x:auto;flex-shrink:0" id="trading-indices">'+
-  INDICES.map(function(idx){
-    return '<div id="idx-'+idx.sym.replace(/\./g,'-')+'" style="padding:10px 18px;border-right:0.5px solid var(--border);flex-shrink:0;min-width:110px">'+
-    '<div style="font-size:9px;letter-spacing:0.1em;color:var(--text3)">'+idx.name+'</div>'+
-    '<div style="font-size:15px;color:var(--text);font-weight:300;margin-top:1px">—</div>'+
-    '<div style="font-size:10px;color:var(--text3)">…</div></div>';
-  }).join('')+
-  '</div>'+
-  /* Tab bar */
-  '<div style="display:flex;padding:0 16px;background:var(--surface2);border-bottom:0.5px solid var(--border);flex-shrink:0;overflow-x:auto">'+tabBtns+'</div>'+
-  /* Body */
-  '<div id="trading-tab-body" style="flex:1;overflow-y:auto;padding:20px"></div>'+
-  '</div>';
-  loadIndices();
-  renderTradingTab();
-}
-function switchTradingTab(tab){
-  _tradingTab=tab;
-  document.querySelectorAll('[onclick^="switchTradingTab"]').forEach(function(btn){
-    var k=btn.getAttribute('onclick').match(/'(\w+)'/)[1];
-    var on=k===tab;
-    btn.style.borderBottomColor=on?'var(--accent)':'transparent';
-    btn.style.color=on?'var(--text)':'var(--text3)';
-  });
-  renderTradingTab();
-}
-function renderTradingTab(){
-  var body=document.getElementById('trading-tab-body');
-  if(!body)return;
-  if(_tradingTab==='market')renderTradingMarket(body);
-  else if(_tradingTab==='trades')renderTradingTrades(body);
-  else if(_tradingTab==='signals')renderTradingSignals(body);
-}
-function renderTradingMarket(body){
-  var SECTORS=[
-    {label:'Tech',syms:['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','AMD','INTC','ORCL','AVGO','QCOM','CRM','ADBE','NFLX']},
-    {label:'Finance',syms:['JPM','BAC','GS','V','MA','BRK-B','AXP']},
-    {label:'Energy',syms:['XOM','CVX','SLB','OXY','COP']},
-    {label:'Healthcare',syms:['JNJ','PFE','UNH','ABBV','MRK','LLY']},
-    {label:'Transport',syms:['UNP','FDX','UPS','DAL','UAL','JBHT','ODFL']},
-    {label:'Consumer',syms:['WMT','COST','TGT','MCD','SBUX','NKE']},
-    {label:'Canadian',syms:['RY.TO','TD.TO','CNR.TO','CP.TO','SU.TO','ABX.TO','BCE.TO','TRI.TO']},
-    {label:'Crypto',syms:['BTC-USD','ETH-USD','SOL-USD','BNB-USD','XRP-USD']}
-  ];
-  var addRow='<div style="display:flex;gap:8px;margin-bottom:20px">'+
-  '<input class="trading-input" id="trading-search" placeholder="Add ticker (e.g. GOOGL)" style="flex:1" onkeydown="if(event.key===\'Enter\')tradingAddSymbol()">'+
-  '<button class="trading-search-btn" onclick="tradingAddSymbol()">+ Add</button>'+
-  '</div>';
-  var sectHtml=SECTORS.map(function(s){
-    var cards=s.syms.map(function(sym){return stockCard(sym,null);}).join('');
-    return '<div style="margin-bottom:22px">'+
-    '<div style="font-size:9px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)">'+s.label+'</div>'+
-    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px" id="sector-'+s.label+'">'+cards+'</div>'+
-    '</div>';
-  }).join('');
-  body.innerHTML=addRow+sectHtml;
-  loadAllCards();
-}
-function stockCard(sym,q){
-  var id='card-'+sym.replace(/[^a-zA-Z0-9]/g,'-');
-  if(!q){
-    return '<div id="'+id+'" style="background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px 14px">'+
-    '<div style="font-size:11px;font-weight:600;color:var(--text);letter-spacing:0.04em">'+sym+'</div>'+
-    '<div style="font-size:20px;color:var(--text);font-weight:200;margin:4px 0 2px;letter-spacing:-0.5px">—</div>'+
-    '<div style="font-size:10px;color:var(--text3)">Loading…</div>'+
-    '</div>';
-  }
-  var up=q.chg>0.001,down=q.chg<-0.001;
-  var chgCol=up?'#f5a623':down?'rgba(255,107,107,0.9)':'var(--text3)';
-  var arrow=up?'▲':down?'▼':'—';
-  var border=up?'rgba(245,166,35,0.2)':down?'rgba(255,107,107,0.2)':'var(--border)';
-  var shortName=q.name.replace(/,? Inc\.?$/,'').replace(/,? Corp\.?$/,'').replace(/,? Ltd\.?$/,'');
-  if(shortName.length>18)shortName=shortName.slice(0,16)+'…';
-  return '<div id="'+id+'" style="background:var(--surface);border:0.5px solid '+border+';border-radius:10px;padding:12px 14px;transition:border-color 0.3s">'+
-  '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2px">'+
-  '<div style="font-size:11px;font-weight:600;color:var(--text);letter-spacing:0.04em">'+sym+'</div>'+
-  sparkSVG(q.closes)+
-  '</div>'+
-  '<div style="font-size:20px;color:var(--text);font-weight:200;margin:3px 0 1px;letter-spacing:-0.5px">'+fmtPrice(q.price)+'</div>'+
-  '<div style="display:flex;justify-content:space-between;align-items:center">'+
-  '<div style="font-size:9px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px">'+shortName+'</div>'+
-  '<div style="font-size:11px;color:'+chgCol+';font-weight:500">'+arrow+' '+(q.pct>=0?'+':'')+q.pct.toFixed(2)+'%</div>'+
-  '</div>'+
-  '</div>';
-}
-async function loadAllCards(){
-  var all=WATCHLIST.slice();
-  var batches=[];
-  for(var i=0;i<all.length;i+=8)batches.push(all.slice(i,i+8));
-  for(var b=0;b<batches.length;b++){
-    var results=await Promise.all(batches[b].map(fetchQuote));
-    results.forEach(function(q){
-      var id='card-'+q.sym.replace(/[^a-zA-Z0-9]/g,'-');
-      var el=document.getElementById(id);
-      if(el)el.outerHTML=stockCard(q.sym,q);
-    });
-  }
-}
-async function loadIndices(){
-  INDICES.forEach(async function(idx){
-    var q=await fetchQuote(idx.sym);
-    var el=document.getElementById('idx-'+idx.sym.replace(/\./g,'-'));
-    if(!el)return;
-    var cls=q.chg>0.001?'up':q.chg<-0.001?'down':'flat';
-    var col=q.chg>0.001?'#f5a623':q.chg<-0.001?'rgba(255,107,107,0.9)':'var(--text3)';
-    el.innerHTML='<div style="font-size:9px;letter-spacing:0.1em;color:var(--text3)">'+idx.name+'</div>'+
-    '<div style="font-size:15px;color:var(--text);font-weight:300;margin-top:1px">'+fmtPrice(q.price)+'</div>'+
-    '<div style="font-size:10px;color:'+col+'">'+(q.chg>=0?'+':'')+q.pct.toFixed(2)+'%</div>';
-  });
-}
-function renderTradingTrades(body){
-  body.innerHTML=
-  '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:20px">'+
-  '<div style="font-size:10px;letter-spacing:0.1em;color:var(--text3);margin-bottom:12px">LOG A TRADE</div>'+
-  '<div style="display:grid;grid-template-columns:1fr 70px 80px 100px 110px auto;gap:8px;align-items:end">'+
-  '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">SYMBOL</div><input id="tl-sym" class="trading-input" placeholder="AAPL"></div>'+
-  '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">TYPE</div><select id="tl-type" class="trading-input"><option>Buy</option><option>Sell</option></select></div>'+
-  '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">QTY</div><input id="tl-qty" class="trading-input" type="number" placeholder="10"></div>'+
-  '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">PRICE ($)</div><input id="tl-price" class="trading-input" type="number" placeholder="150.00" step="0.01"></div>'+
-  '<div><div style="font-size:9px;color:var(--text3);margin-bottom:3px">DATE</div><input id="tl-date" class="trading-input" type="date"></div>'+
-  '<button class="trading-search-btn" onclick="tradeLogAdd()" style="height:32px;align-self:end">Log</button>'+
-  '</div></div>'+
-  '<div id="trade-log-section"></div>';
-  setTimeout(tradingShowLog,50);
-}
-function renderTradingSignals(body){
-  body.innerHTML=
-  '<div style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.2);border-radius:12px;padding:18px 20px;margin-bottom:16px">'+
-  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">'+
-  '<button class="trading-search-btn" onclick="tradingRunSignals()" id="signals-btn" style="background:rgba(224,123,32,0.18);border-color:rgba(224,123,32,0.5);padding:10px 20px;font-size:12px">⚡ Run AI Signals</button>'+
-  '<button class="trading-search-btn" onclick="tradingMarketScan()" id="scan-btn" style="padding:10px 20px;font-size:12px">📊 Market Scanner</button>'+
-  '</div>'+
-  '<div style="font-size:10px;color:var(--text3);line-height:1.6">Analyses all '+WATCHLIST.length+' stocks — live prices, politics, sector trends, company news → BUY / HOLD / SELL with entry prices.</div>'+
-  '</div>'+
-  '<div id="trading-scanner" style="display:none;margin-bottom:16px"></div>'+
-  '<div id="trading-signals"></div>'+
-  /* WealthSimple at bottom */
-  '<div style="margin-top:24px;background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:16px">'+
-  '<div style="font-size:10px;letter-spacing:0.1em;color:var(--text3);margin-bottom:8px">WEALTHSIMPLE PORTFOLIO ANALYSIS</div>'+
-  '<textarea class="trading-input" id="ws-csv" style="width:100%;min-height:60px;resize:vertical;margin-bottom:8px" placeholder="Paste WealthSimple CSV export here…"></textarea>'+
-  '<button class="trading-search-btn" onclick="analyseWS()">Analyse Portfolio →</button>'+
-  '<div id="ws-result" style="margin-top:10px;font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.6"></div>'+
-  '</div>';
-}
-async function loadTradingData(){loadIndices();loadAllCards();}
-async function tradingAddSymbol(){
-  var inp=document.getElementById('trading-search');
-  if(!inp||!inp.value.trim())return;
-  var sym=inp.value.trim().toUpperCase();
-  inp.value='';
-  if(WATCHLIST.indexOf(sym)!==-1){toast(sym+' already in watchlist');return;}
-  WATCHLIST.push(sym);
-  /* Add placeholder card to a custom sector at top, then load real data */
-  var customSect=document.getElementById('sector-Custom');
-  if(!customSect){
-    var body=document.getElementById('trading-tab-body');
-    if(body){
-      var div=document.createElement('div');
-      div.style.marginBottom='22px';
-      div.innerHTML='<div style="font-size:9px;letter-spacing:0.13em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--border)">Custom</div>'+
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px" id="sector-Custom"></div>';
-      body.insertBefore(div,body.firstChild);
-      customSect=document.getElementById('sector-Custom');
-    }
-  }
-  if(customSect){
-    var ph=document.createElement('div');ph.innerHTML=stockCard(sym,null);
-    customSect.appendChild(ph.firstChild);
-  }
-  sfxPop();toast('Added '+sym);
-  var q=await fetchQuote(sym);
-  var id='card-'+sym.replace(/[^a-zA-Z0-9]/g,'-');
-  var el=document.getElementById(id);
-  if(el)el.outerHTML=stockCard(sym,q);
-}
-async function analyseWS(){
-  var csv=document.getElementById('ws-csv');
-  if(!csv||!csv.value.trim()){toast('Paste your WealthSimple CSV first');return;}
-  var result=document.getElementById('ws-result');
-  if(result)result.textContent='Analysing…';
-  try{
-    var r=await fetch('/api/ai',{
-      method:'POST',headers:{'Content-Type':'application/json',},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,messages:[{role:'user',content:'You are a portfolio analyst. Analyse this WealthSimple portfolio data and give a concise summary: total value, top holdings, sector exposure, performance, and 3 actionable suggestions.\n\n'+csv.value}]})
-    });
-    var d=await r.json();
-    if(result)result.textContent=(d.content&&d.content[0])?d.content[0].text:'No analysis.';
-    sfxSuccess();
-  }catch(e){if(result)result.textContent='Error: '+(e.message||'Check connection.');}
-}
-
-/* Trade Log */
-function getTradeLog(){try{return JSON.parse(localStorage.getItem('TRADE_LOG')||'[]');}catch(e){return[];}}
-function saveTradeLog(arr){localStorage.setItem('TRADE_LOG',JSON.stringify(arr));}
-function tradeLogAdd(){
-  var sym=(document.getElementById('tl-sym')||{}).value;var type=(document.getElementById('tl-type')||{}).value;
-  var qty=parseFloat((document.getElementById('tl-qty')||{}).value)||0;
-  var price=parseFloat((document.getElementById('tl-price')||{}).value)||0;
-  var date=(document.getElementById('tl-date')||{}).value||new Date().toISOString().slice(0,10);
-  if(!sym||!qty||!price){sfxError();toast('Fill all trade fields');return;}
-  var log=getTradeLog();log.push({symbol:sym.toUpperCase(),type:type,qty:qty,price:price,date:date,total:qty*price});
-  saveTradeLog(log);sfxSuccess();toast('Trade logged · '+sym.toUpperCase());tradingShowLog();
-}
-function tradeLogDelete(i){var l=getTradeLog();l.splice(i,1);saveTradeLog(l);sfxPop();tradingShowLog();}
-function tradingShowLog(){
-  var log=getTradeLog();
-  var container=document.getElementById('trade-log-section');if(!container)return;
-  if(!log.length){container.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0">No trades logged yet.</div>';return;}
-  /* Calculate positions */
-  var positions={};
-  log.forEach(function(t){
-    if(!positions[t.symbol])positions[t.symbol]={symbol:t.symbol,qty:0,cost:0};
-    if(t.type==='Buy'){positions[t.symbol].qty+=t.qty;positions[t.symbol].cost+=t.total;}
-    else{positions[t.symbol].qty-=t.qty;positions[t.symbol].cost-=t.total;}
-  });
-  var posArr=Object.values(positions).filter(function(p){return p.qty>0;});
-  var posHtml='';
-  if(posArr.length){
-    posHtml='<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin:12px 0 6px">OPEN POSITIONS</div>';
-    posHtml+='<div style="overflow-x:auto"><table class="tms-table"><thead><tr><th class="tms-th">Symbol</th><th class="tms-th">Qty</th><th class="tms-th">Avg Cost</th><th class="tms-th">Total Invested</th></tr></thead><tbody>';
-    posArr.forEach(function(p){posHtml+='<tr class="tms-tr"><td class="tms-td sym">'+p.symbol+'</td><td class="tms-td">'+p.qty+'</td><td class="tms-td">$'+(p.cost/p.qty).toFixed(2)+'</td><td class="tms-td">$'+p.cost.toFixed(2)+'</td></tr>';});
-    posHtml+='</tbody></table></div>';
-  }
-  var logHtml='<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin:12px 0 6px">TRADE HISTORY</div>';
-  logHtml+='<div style="overflow-x:auto"><table class="tms-table"><thead><tr><th class="tms-th">Date</th><th class="tms-th">Symbol</th><th class="tms-th">Type</th><th class="tms-th">Qty</th><th class="tms-th">Price</th><th class="tms-th">Total</th><th class="tms-th"></th></tr></thead><tbody>';
-  log.slice().reverse().forEach(function(t,ri){
-    var i=log.length-1-ri;
-    var cls=t.type==='Buy'?'color:var(--accent2)':'color:var(--accent3)';
-    logHtml+='<tr class="tms-tr"><td class="tms-td" style="font-size:10px;color:var(--text3)">'+t.date+'</td><td class="tms-td sym">'+t.symbol+'</td><td class="tms-td" style="'+cls+'">'+t.type+'</td><td class="tms-td">'+t.qty+'</td><td class="tms-td">$'+t.price.toFixed(2)+'</td><td class="tms-td">$'+t.total.toFixed(2)+'</td><td class="tms-td"><button onclick="tradeLogDelete('+i+')" style="background:none;border:none;color:var(--accent3);cursor:pointer;font-size:10px">✕</button></td></tr>';
-  });
-  logHtml+='</tbody></table></div>';
-  container.innerHTML=posHtml+logHtml;
-}
-
-async function tradingMarketScan(){
-  var btn=document.getElementById('scan-btn');
-  var box=document.getElementById('trading-scanner');
-  if(!box)return;
-  if(btn){btn.disabled=true;btn.textContent='Scanning…';}
-  box.style.display='';
-  box.innerHTML='<div style="font-size:11px;color:var(--text3);padding:10px 0">Fetching live prices…</div>';
-  var quotes=await Promise.all(WATCHLIST.map(fetchQuote));
-  var up=quotes.filter(function(q){return q.pct>0.05;}).sort(function(a,b){return b.pct-a.pct;});
-  var down=quotes.filter(function(q){return q.pct<-0.05;}).sort(function(a,b){return a.pct-b.pct;});
-  var flat=quotes.filter(function(q){return Math.abs(q.pct)<=0.05;});
-  function card(q,col){
-    var arrow=q.pct>0?'▲':'▼';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:5px;border:0.5px solid rgba(255,255,255,0.05)">'+
-    '<div style="display:flex;align-items:center;gap:10px">'+
-    '<span style="font-size:12px;font-weight:500;color:var(--text);min-width:60px">'+q.sym+'</span>'+
-    '<span style="font-size:10px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+q.name+'</span>'+
-    '</div>'+
-    '<div style="display:flex;align-items:center;gap:12px">'+
-    sparkSVG(q.closes)+
-    '<span style="font-size:12px;color:var(--text2)">'+fmtPrice(q.price)+'</span>'+
-    '<span style="font-size:12px;color:'+col+';font-weight:500;min-width:60px;text-align:right">'+arrow+' '+(q.pct>=0?'+':'')+q.pct.toFixed(2)+'%</span>'+
-    '</div></div>';
-  }
-  var html='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-  html+='<div><div style="font-size:9px;letter-spacing:0.12em;color:#f5a623;margin-bottom:8px">▲ MOVING UP ('+up.length+')</div>';
-  html+=up.length?up.map(function(q){return card(q,'#f5a623');}).join(''):'<div style="font-size:11px;color:var(--text3);padding:8px">None today</div>';
-  html+='</div>';
-  html+='<div><div style="font-size:9px;letter-spacing:0.12em;color:rgba(255,107,107,0.9);margin-bottom:8px">▼ MOVING DOWN ('+down.length+')</div>';
-  html+=down.length?down.map(function(q){return card(q,'rgba(255,107,107,0.9)');}).join(''):'<div style="font-size:11px;color:var(--text3);padding:8px">None today</div>';
-  html+='</div>';
-  html+='</div>';
-  if(flat.length){
-    html+='<div style="margin-top:10px"><div style="font-size:9px;letter-spacing:0.12em;color:var(--text3);margin-bottom:6px">FLAT ('+flat.length+')</div>';
-    html+='<div style="display:flex;flex-wrap:wrap;gap:6px">';
-    flat.forEach(function(q){html+='<span style="font-size:11px;color:var(--text3);background:var(--surface);border:0.5px solid var(--border);padding:4px 10px;border-radius:20px">'+q.sym+' '+fmtPrice(q.price)+'</span>';});
-    html+='</div></div>';
-  }
-  box.innerHTML=html;
-  if(btn){btn.disabled=false;btn.textContent='📊 Market Scanner';}
-  sfxSuccess();
-}
-
-async function tradingRunSignals(){
-  var btn=document.getElementById('signals-btn');
-  var out=document.getElementById('trading-signals');
-  if(!out)return;
-  if(btn){btn.disabled=true;btn.textContent='Analysing…';}
-  out.innerHTML='<div style="font-size:11px;color:var(--text3);padding:10px 0">Fetching live prices for '+WATCHLIST.length+' symbols…</div>';
-  var quotes=await Promise.all(WATCHLIST.map(fetchQuote));
-  var priceLines=quotes.filter(function(q){return q.price;}).map(function(q){
-    var trend=q.closes.length>=2?(q.closes[q.closes.length-1]>q.closes[0]?'uptrend':'downtrend'):'unknown';
-    return q.sym+': $'+fmtPrice(q.price).replace('$','')+' | Today: '+(q.pct>=0?'+':'')+q.pct.toFixed(2)+'% | 5d trend: '+trend;
-  }).join('\n');
-  out.innerHTML='<div style="font-size:11px;color:var(--text3);padding:10px 0">Running AI analysis — politics, news, fundamentals…</div>';
-  var today=new Date().toISOString().slice(0,10);
-  var prompt='You are a professional stock analyst and political economist. Today is '+today+'.\n\nLive market data:\n'+priceLines+'\n\nFor each symbol:\n1. Classify as BUY / HOLD / SELL\n2. Give a specific recommended entry price (or price range) if BUY\n3. Give a 1-sentence reason covering: recent company news, political/macro factors (interest rates, tariffs, regulation, elections, geopolitics), and sector momentum\n\nFormat your response as a clean list, one stock per line:\n[SYMBOL] | [BUY/HOLD/SELL] | Entry: $X | Reason: ...\n\nBe specific, actionable, and concise. Base analysis on your knowledge of current macro conditions, sector trends, and company fundamentals as of your training cutoff.';
-  try{
-    var r=await fetch('/api/ai',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:prompt}]})
-    });
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'No signals generated.';
-    var lines=text.trim().split('\n').filter(function(l){return l.trim();});
-    var html='<div style="margin-bottom:8px;font-size:9px;letter-spacing:0.1em;color:var(--text3)">GENERATED '+today+' · BASED ON LIVE PRICES + AI MACRO ANALYSIS</div>';
-    lines.forEach(function(line){
-      var isBuy=/\bBUY\b/i.test(line);
-      var isSell=/\bSELL\b/i.test(line);
-      var isHold=/\bHOLD\b/i.test(line);
-      var border=isBuy?'rgba(245,166,35,0.3)':isSell?'rgba(255,107,107,0.3)':'rgba(255,255,255,0.06)';
-      var badge=isBuy?'<span style="background:rgba(245,166,35,0.15);color:#f5a623;font-size:9px;font-weight:700;padding:2px 8px;border-radius:8px;letter-spacing:0.08em">BUY</span>':
-                isSell?'<span style="background:rgba(255,107,107,0.12);color:rgba(255,107,107,0.9);font-size:9px;font-weight:700;padding:2px 8px;border-radius:8px;letter-spacing:0.08em">SELL</span>':
-                isHold?'<span style="background:rgba(255,255,255,0.06);color:var(--text3);font-size:9px;font-weight:700;padding:2px 8px;border-radius:8px;letter-spacing:0.08em">HOLD</span>':'';
-      var parts=line.split('|');
-      var sym=parts[0]?parts[0].trim():'';
-      var entry=parts[1]?parts[1].trim():'';
-      var entryStr=parts[2]?parts[2].trim():'';
-      var reason=parts[3]?parts[3].trim():'';
-      if(parts.length<3){
-        html+='<div style="padding:8px 12px;font-size:11px;color:var(--text3);line-height:1.6">'+line+'</div>';
-        return;
-      }
-      html+='<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:rgba(255,255,255,0.02);border:0.5px solid '+border+';border-radius:10px;margin-bottom:7px">'+
-      '<div style="min-width:60px"><div style="font-size:13px;font-weight:500;color:var(--text)">'+sym+'</div>'+badge+'</div>'+
-      '<div style="flex:1;min-width:0">'+
-      '<div style="font-size:11px;color:var(--accent2);margin-bottom:3px">'+entryStr+'</div>'+
-      '<div style="font-size:11px;color:var(--text3);line-height:1.5">'+reason+'</div>'+
-      '</div></div>';
-    });
-    html+='<div style="font-size:9px;color:var(--text3);margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)">⚠ AI analysis is informational only — not financial advice. Always do your own research before trading.</div>';
-    out.innerHTML=html;
-    sfxSuccess();
-  }catch(e){
-    out.innerHTML='<div style="font-size:11px;color:rgba(255,107,107,0.8)">Error: '+(e.message||'Check connection')+'</div>';
-    sfxError();
-  }
-  if(btn){btn.disabled=false;btn.textContent='⚡ Run AI Signals';}
-}
-
-/* ════════════════════════════════════════
-   FINANCE
-   ════════════════════════════════════════ */
-function getFinanceTxn(key){try{return JSON.parse(localStorage.getItem(key)||'[]');}catch(e){return[];}}
-function saveFinanceTxn(key,arr){localStorage.setItem(key,JSON.stringify(arr));}
-function parseCSV(text){
-  var lines=text.split('\n').filter(function(l){return l.trim();});
-  if(lines.length<2)return[];
-  var headers=lines[0].split(',').map(function(h){return h.replace(/"/g,'').trim().toLowerCase();});
-  var rows=[];
-  for(var i=1;i<lines.length;i++){
-    var cols=lines[i].match(/(".*?"|[^,]+)/g)||[];
-    var obj={};headers.forEach(function(h,j){obj[h]=(cols[j]||'').replace(/"/g,'').trim();});
-    rows.push(obj);
-  }
-  return rows;
-}
-function detectCSVTransaction(row){
-  /* Try to extract date, description, amount from various bank CSV formats */
-  var date=row.date||row['transaction date']||row['posting date']||row['trans date']||'';
-  var desc=row.description||row['transaction description']||row['payee']||row['memo']||'';
-  var amount=parseFloat(row.amount||row['credit']||row['debit']||row['withdrawal']||row['deposit']||0);
-  if(!date||!desc)return null;
-  return{date:date,description:desc,amount:amount,category:'Other'};
-}
-function financeRenderTxnTable(txns){
-  if(!txns.length)return'';
-  var cats={};txns.forEach(function(t){cats[t.category]=(cats[t.category]||0)+Math.abs(t.amount);});
-  var catKeys=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];});
-  var maxCat=cats[catKeys[0]]||1;
-  var catColors=['#e07b20','#f5a623','#f5d0a0','#f5a623','#ff6b6b','#5eead4','#a78bfa','#34d399'];
-  var breakdown='<div style="margin:14px 0">';
-  catKeys.forEach(function(c,i){
-    var pct=Math.round((cats[c]/maxCat)*100);
-    breakdown+='<div class="spend-row"><div class="spend-top"><span>'+c+'</span><span style="color:var(--text2)">$'+cats[c].toFixed(2)+'</span></div>';
-    breakdown+='<div class="spend-bg"><div class="spend-fill" style="width:'+pct+'%;background:'+catColors[i%catColors.length]+'"></div></div></div>';
-  });
-  breakdown+='</div>';
-  var total=txns.reduce(function(s,t){return s+Math.abs(t.amount);},0);
-  var income=txns.filter(function(t){return t.category==='Income';}).reduce(function(s,t){return s+Math.abs(t.amount);},0);
-  return '<div class="stat-grid" style="margin-bottom:14px">'+
-  '<div class="stat-card"><div class="stat-lbl">Total Transactions</div><div class="stat-val">'+txns.length+'</div></div>'+
-  '<div class="stat-card"><div class="stat-lbl">Total Spend</div><div class="stat-val">$'+total.toFixed(0)+'</div></div>'+
-  (income?'<div class="stat-card"><div class="stat-lbl">Income</div><div class="stat-val" style="color:var(--accent2)">$'+income.toFixed(0)+'</div></div>':'')+'</div>'+
-  breakdown;
-}
-function renderFinance(){
-  sfxCoin();
-  var txns=getFinanceTxn('FINANCE_TXN');
-  var tableHtml=txns.length?financeRenderTxnTable(txns):'';
-  document.getElementById('content').innerHTML=
-  '<div class="gcontent">'+
-  '<div class="g-title">Finances</div>'+
-  '<div class="g-sub">Import bank statements to get spending insights and tax summaries.</div>'+
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">'+
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;letter-spacing:0.04em">CONNECT BANK — Export CSV from your bank portal then upload here</div>'+
-  '<div style="font-size:10px;color:var(--text3);margin-bottom:10px">CIBC: My Accounts → Transactions → Export CSV &nbsp;|&nbsp; JPMorgan Chase: Account Activity → Download → CSV</div>'+
-  '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-  '<button class="trans-go-btn" onclick="document.getElementById(\'fin-csv\').click()">📥 Import CSV</button>'+
-  '<button class="tms-btn" onclick="document.getElementById(\'fin-pdf\').click()" style="background:rgba(245,166,35,0.08);border-color:rgba(245,166,35,0.25);color:var(--accent2)">📄 Upload PDF / Receipt</button>'+
-  '<button class="tms-btn" onclick="showDataImport(\'Personal Finance\')">📦 Import from Previous Software</button>'+
-  (txns.length?'<button class="tms-btn" onclick="finTaxSummary()">🧾 Tax Summary</button>':'')+''+
-  (txns.length?'<button class="tms-btn" onclick="if(confirm(\'Clear all transactions?\')){localStorage.removeItem(\'FINANCE_TXN\');renderFinance();}">✕ Clear</button>':'')+
-  '</div>'+
-  '<input type="file" id="fin-csv" accept=".csv,.txt" style="display:none" onchange="finImportCSV(this,\'FINANCE_TXN\',renderFinance)">'+
-  '<input type="file" id="fin-pdf" accept=".pdf,.jpg,.jpeg,.png,.txt" style="display:none" onchange="finImportPDF(this,\'FINANCE_TXN\',\'fin-result\',renderFinance)">'+
-  '</div>'+
-  (tableHtml||'<div style="font-size:13px;color:var(--text3);padding:8px 0">No transactions yet. Import a bank CSV above.</div>')+
-  '<div id="fin-result"></div>'+
-  '</div>';
-}
-async function finImportCSV(input,storageKey,onDone){
-  var f=input.files[0];if(!f)return;
-  var res=document.getElementById('fin-result')||document.getElementById('biz-fin-result');
-  if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Reading CSV…</div>';
-  var reader=new FileReader();
-  reader.onload=async function(e){
-    var rows=parseCSV(e.target.result||'');
-    var txns=rows.map(detectCSVTransaction).filter(function(t){return t!==null;});
-    if(!txns.length){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not parse CSV. Ensure it has date, description, amount columns.</div>';return;}
-    if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Categorizing '+txns.length+' transactions with AI…</div>';
-    try{
-      var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,system:PROMPTS.finance_categorize,messages:[{role:'user',content:'Categorize these transactions:\n'+JSON.stringify(txns.slice(0,80))}]})});
-      if(r.ok){
-        var d=await r.json();
-        var raw=(d.content&&d.content[0]&&d.content[0].text)||'[]';
-        var clean=raw.replace(/^```json?\s*/,'').replace(/```\s*$/,'').trim();
-        try{var categorized=JSON.parse(clean);if(Array.isArray(categorized)&&categorized.length)txns=categorized;}catch(ex){}
-      }
-    }catch(ex){}
-    var existing=getFinanceTxn(storageKey);
-    var merged=existing.concat(txns);
-    saveFinanceTxn(storageKey,merged);
-    sfxSuccess();toast(txns.length+' transactions imported');
-    if(onDone)onDone();
-  };
-  reader.readAsText(f);
-}
-async function finImportPDF(input,storageKey,resultId,onDone){
-  var f=input.files[0];if(!f)return;
-  input.value='';
-  var res=document.getElementById(resultId);
-  if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Reading document…</div>';
-  var reader=new FileReader();
-  reader.onload=async function(e){
-    var text='';
-    if(f.type==='application/pdf'||f.name.endsWith('.pdf')){
-      /* Extract raw text from PDF using simple byte scanning */
-      var arr=new Uint8Array(e.target.result);
-      var raw='';for(var i=0;i<Math.min(arr.length,50000);i++)raw+=String.fromCharCode(arr[i]);
-      /* Pull readable strings */
-      var matches=raw.match(/\(([^\)]{2,80})\)/g)||[];
-      text=matches.map(function(m){return m.slice(1,-1);}).join(' ').replace(/[^\x20-\x7E\n]/g,' ').replace(/\s+/g,' ').trim();
-      if(!text||text.length<20)text=raw.replace(/[^\x20-\x7E\n]/g,' ').substring(0,6000);
-    }else{
-      text=e.target.result||'';
-    }
-    if(!text||text.length<10){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not read document. Try a text-based PDF or CSV.</div>';return;}
-    if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Extracting & categorizing expenses with AI…</div>';
-    try{
-      var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,system:PROMPTS.pdf_expenses,messages:[{role:'user',content:'Extract all expense/income line items from this document:\n\n'+text.substring(0,6000)}]})});
-      if(!r.ok){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error — check your key.</div>';return;}
-      var d=await r.json();
-      var raw2=(d.content&&d.content[0]&&d.content[0].text)||'[]';
-      var clean=raw2.replace(/^```json?\s*/,'').replace(/```\s*$/,'').trim();
-      var items=[];try{items=JSON.parse(clean);}catch(x){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not parse AI response. Try again.</div>';return;}
-      if(!Array.isArray(items)||!items.length){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">No line items found in document.</div>';return;}
-      /* Normalise fields */
-      var today=new Date().toLocaleDateString();
-      var txns=items.map(function(it){
-        return {date:it.date||today,description:it.description||'Unknown',amount:parseFloat(it.amount)||0,category:it.category||'Other',type:it.type||'expense'};
-      });
-      var existing=getFinanceTxn(storageKey);
-      saveFinanceTxn(storageKey,existing.concat(txns));
-      sfxSuccess();toast(txns.length+' items extracted from PDF');
-      if(onDone)onDone();
-    }catch(ex){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-  };
-  if(f.type==='application/pdf'||f.name.endsWith('.pdf'))reader.readAsArrayBuffer(f);
-  else reader.readAsText(f);
-}
-async function finTaxSummary(){
-  var txns=getFinanceTxn('FINANCE_TXN');
-  var res=document.getElementById('fin-result');
-  if(!txns.length||!res){toast('No transactions to analyse');return;}
-  res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0"><div class="td"></div> Preparing tax summary…</div>';
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:PROMPTS.tax_summary,messages:[{role:'user',content:'Transactions:\n'+JSON.stringify(txns.slice(0,100))}]})});
-    if(!r.ok){res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error — try again.</div>';return;}
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'Could not generate.';
-    res.innerHTML='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-top:14px"><div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.8">'+text+'</div></div>';
-    sfxReceive();
-  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-}
-
-/* ════════════════════════════════════════
-   HEALTH
-   ════════════════════════════════════════ */
-function renderHealth(){
-  var last=null;try{last=JSON.parse(localStorage.getItem('HEALTH_LAST')||'null');}catch(e){}
-  var dropZone='<div class="health-drop" id="health-drop-zone" onclick="document.getElementById(\'hup\').click()" ondragover="event.preventDefault();this.style.borderColor=\'var(--accent)\'" ondragleave="this.style.borderColor=\'\'" ondrop="event.preventDefault();this.style.borderColor=\'\';var dt=event.dataTransfer;if(dt&&dt.files.length)analyseReportFile(dt.files[0])" style="padding:36px 28px;cursor:pointer;">'+
-  '<input type="file" id="hup" accept=".pdf,.txt,.doc,.docx" style="display:none" onchange="analyseReport(this)">'+
-  '<div style="width:60px;height:60px;border-radius:50%;background:rgba(224,123,32,0.08);border:0.5px solid rgba(224,123,32,0.18);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:26px;color:var(--accent);animation:orbPulse 3s ease-in-out infinite">◈</div>'+
-  '<div style="font-size:14px;color:var(--text2);font-weight:300;margin-bottom:5px">Drop or click to upload report</div>'+
-  '<div style="font-size:11px;color:var(--text3);letter-spacing:0.08em">PDF · TXT · DOC · DOCX</div>'+
-  '</div>';
-  var prevHtml='';
-  if(last){window._lastHealthData=last;prevHtml='<div style="margin-top:4px;font-size:10px;color:var(--text3);text-align:right"><button onclick="renderHealthResults(window._lastHealthData);document.getElementById(\'health-prev\').style.display=\'none\'" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:10px">↩ Load last analysis</button></div>';prevHtml='<div id="health-prev">'+prevHtml+'</div>';}
-  document.getElementById('content').innerHTML=
-  '<div class="gcontent">'+
-  '<div class="g-title">Health</div>'+
-  '<div class="g-sub">Upload a medical report — AI analyses and categorizes everything.</div>'+
-  dropZone+prevHtml+
-  '<div id="health-result"></div>'+
-  '</div>';
-}
-function renderHealthResults(data){
-  var res=document.getElementById('health-result');
-  if(!res)return;
-  var sections=[
-    {key:'vitals',label:'Vitals',icon:'💓',color:'#f5a623'},
-    {key:'labs',label:'Lab Results',icon:'🔬',color:'#e07b20'},
-    {key:'diagnoses',label:'Diagnoses',icon:'📋',color:'#f5d0a0'},
-    {key:'medications',label:'Medications',icon:'💊',color:'#e07b20'},
-    {key:'recommendations',label:'Recommendations',icon:'✅',color:'#f5a623'},
-    {key:'redFlags',label:'Red Flags',icon:'⚠️',color:'#ff6b6b'}
-  ];
-  var html='<div style="margin-top:16px">';
-  sections.forEach(function(s){
-    var sec=data[s.key];
-    if(!sec||(!sec.summary&&(!sec.items||!sec.items.length)))return;
-    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;margin-bottom:10px;overflow:hidden">';
-    html+='<div style="display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;border-bottom:0.5px solid var(--border)" onclick="var b=this.nextSibling;b.style.display=b.style.display===\'none\'?\'block\':\'none\'">';
-    html+='<span style="font-size:16px">'+s.icon+'</span>';
-    html+='<span style="font-size:13px;color:'+s.color+';font-weight:400">'+s.label+'</span>';
-    if(sec.summary)html+='<span style="font-size:11px;color:var(--text3);margin-left:auto;max-width:200px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+sec.summary+'</span>';
-    html+='</div>';
-    html+='<div style="padding:12px 14px">';
-    if(sec.items&&sec.items.length){sec.items.forEach(function(item){html+='<div style="font-size:12px;color:var(--text2);padding:4px 0;border-bottom:0.5px solid rgba(255,255,255,0.04)">'+item+'</div>';});}
-    else if(sec.summary){html+='<div style="font-size:12px;color:var(--text2)">'+sec.summary+'</div>';}
-    html+='</div></div>';
-  });
-  html+='</div>';
-  res.innerHTML=html;
-}
-async function analyseReport(input){var f=input.files[0];if(!f)return;analyseReportFile(f);}
-async function analyseReportFile(f){
-  var res=document.getElementById('health-result');
-  if(!res)return;
-  res.innerHTML='<div style="display:flex;align-items:center;gap:10px;padding:20px 0;color:var(--text3);font-size:12px"><div class="td"></div><div class="td"></div><div class="td"></div> Analysing '+f.name+'…</div>';
-  try{
-    var reader=new FileReader();
-    reader.onload=async function(e){
-      var text=e.target.result||'[Report: '+f.name+']';
-      try{
-        var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:PROMPTS.health,messages:[{role:'user',content:'Analyse this medical report and return JSON:\n\n'+text.substring(0,5000)}]})});
-        if(!r.ok){var errD={};try{errD=await r.json();}catch(x){}res.innerHTML='<div style="color:var(--accent3);font-size:12px;padding:10px 0">API error '+r.status+': '+(errD.error&&errD.error.message||'Check API key.')+'</div>';return;}
-        var d=await r.json();
-        if(d.error){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Error: '+(d.error.message||'Unknown.')+'</div>';return;}
-        var raw=(d.content&&d.content[0]&&d.content[0].text)||'{}';
-        var clean=raw.replace(/^```json?\s*/,'').replace(/```\s*$/,'').trim();
-        var parsed={};try{parsed=JSON.parse(clean);}catch(ex){res.innerHTML='<div style="font-size:12px;color:var(--text2);white-space:pre-wrap">'+raw+'</div>';sfxReceive();return;}
-        localStorage.setItem('HEALTH_LAST',JSON.stringify(parsed));
-        renderHealthResults(parsed);
-        sfxReceive();
-      }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-    };
-    reader.readAsText(f);
-  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not read file.</div>';}
-}
-
-/* ════════════════════════════════════════
-   MEMORIES
-   ════════════════════════════════════════ */
-function getMemoPhotos(){try{return JSON.parse(localStorage.getItem('MEM_PHOTOS')||'[]');}catch(e){return[];}}
-function saveMemoPhotos(arr){try{localStorage.setItem('MEM_PHOTOS',JSON.stringify(arr));}catch(e){toast('Storage full — try smaller images');}}
-function renderMemories(){
-  var now=new Date().getFullYear();
-  var photos=getMemoPhotos();
-  var allYears=[];
-  for(var y=now;y>=now-8;y--)allYears.push(y);
-  photos.forEach(function(p){if(allYears.indexOf(p.year)===-1)allYears.push(p.year);});
-  allYears.sort(function(a,b){return b-a;});
-  var html='<div class="gcontent"><div class="g-title">Memories</div><div class="g-sub">Your story, year by year.</div>';
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">';
-  html+='<div class="mem-years" id="mem-year-tabs">';
-  allYears.forEach(function(y){var cnt=photos.filter(function(p){return p.year===y;}).length;html+='<button class="yr-btn" onclick="showMemories('+y+',this)">'+y+(cnt?' <span style=\'font-size:9px;opacity:0.6\'>('+cnt+')</span>':'')+'</button>';});
-  html+='</div>';
-  html+='<button class="trans-go-btn" onclick="document.getElementById(\'mem-upload\').click()" style="white-space:nowrap">+ Add Memory</button>';
-  html+='<input type="file" id="mem-upload" accept="image/*" multiple style="display:none" onchange="memUploadFiles(this)">';
-  html+='</div>';
-  html+='<div class="mem-list" id="mem-list"><div style="font-size:13px;color:var(--text3);padding:8px 0">Select a year to see memories.</div></div></div>';
-  document.getElementById('content').innerHTML=html;
-}
-function memUploadFiles(input){
-  var files=[].slice.call(input.files);
-  if(!files.length)return;
-  var year=new Date().getFullYear();
-  var photos=getMemoPhotos();
-  var count=0;
-  function processNext(){
-    if(count>=files.length){
-      saveMemoPhotos(photos);
-      sfxSuccess();toast(files.length+' memor'+(files.length===1?'y':'ies')+' saved · '+year);
-      var activeBtn=document.querySelector('.yr-btn.active');
-      if(activeBtn&&activeBtn.textContent.trim().startsWith(String(year))){
-        showMemories(year,activeBtn);
-      }else{
-        var tabs=document.getElementById('mem-year-tabs');
-        if(tabs){var first=tabs.querySelector('.yr-btn');if(first&&first.textContent.trim().startsWith(String(year))){showMemories(year,first);}}
-      }
-      renderMemories();return;
-    }
-    var f=files[count++];
-    if(f.size>3*1024*1024){toast('Skipped '+f.name+' — over 3MB');processNext();return;}
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var caption=f.name.replace(/\.[^.]+$/,'');
-      photos.push({year:year,date:new Date().toLocaleDateString(),caption:caption,dataUrl:e.target.result,type:'image'});
-      processNext();
-    };
-    reader.readAsDataURL(f);
-  }
-  processNext();
-}
-function showMemories(year,btn){
-  document.querySelectorAll('.yr-btn').forEach(function(b){b.classList.remove('active');});
-  if(btn)btn.classList.add('active');sfxNav();
-  var list=document.getElementById('mem-list');
-  var photos=getMemoPhotos().filter(function(p){return p.year===year;});
-  if(photos.length===0){list.innerHTML='<div style="font-size:12px;color:var(--text3);">No memories for '+year+' yet. Click "Add Memory" to upload photos.</div>';return;}
-  var html='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:8px">';
-  photos.forEach(function(p,idx){
-    html+='<div style="position:relative;border-radius:10px;overflow:hidden;background:var(--surface2);border:0.5px solid var(--border);aspect-ratio:1">';
-    if(p.dataUrl){html+='<img src="'+p.dataUrl+'" style="width:100%;height:100%;object-fit:cover" loading="lazy">';}
-    html+='<div style="position:absolute;bottom:0;left:0;right:0;padding:6px 8px;background:linear-gradient(transparent,rgba(5,5,8,0.9));font-size:10px;color:var(--text2)">'+p.caption+'</div>';
-    html+='<div style="position:absolute;top:5px;right:5px"><button onclick="memDeletePhoto('+idx+','+year+')" style="background:rgba(255,107,107,0.15);border:none;color:rgba(255,107,107,0.8);cursor:pointer;font-size:9px;padding:2px 5px;border-radius:4px">✕</button></div>';
-    html+='</div>';
-  });
-  html+='</div>';
-  list.innerHTML=html;
-}
-function memDeletePhoto(localIdx,year){
-  var photos=getMemoPhotos();
-  var yearPhotos=photos.filter(function(p){return p.year===year;});
-  var target=yearPhotos[localIdx];
-  if(!target)return;
-  var globalIdx=photos.indexOf(target);
-  if(globalIdx===-1)return;
-  photos.splice(globalIdx,1);
-  saveMemoPhotos(photos);
-  sfxPop();toast('Memory removed');
-  var activeBtn=document.querySelector('.yr-btn.active');
-  showMemories(year,activeBtn);
-}
-
-/* ════════════════════════════════════════
-   PERMITS
-   ════════════════════════════════════════ */
-function getPermits(){try{return JSON.parse(localStorage.getItem('PERMIT_DATA')||'[]');}catch(e){return[];}}
-function savePermits(arr){localStorage.setItem('PERMIT_DATA',JSON.stringify(arr));}
-function permitDaysLeft(expiry){var d=new Date(expiry);var now=new Date();return Math.ceil((d-now)/(1000*60*60*24));}
-function permitStatus(days){return days<0?'expired':days<=30?'danger':days<=90?'warn':'ok';}
-function permitStatusLabel(days){return days<0?'✕ Expired':days<=30?'⚠ Expires in '+days+'d':days<=90?'◉ Renews in '+days+'d':'● Active';}
-function checkPermitAlerts(){
-  var permits=getPermits();
-  var urgent=permits.filter(function(p){return permitDaysLeft(p.expiry)<=30;});
-  if(urgent.length){
-    setTimeout(function(){urgent.forEach(function(p){var d=permitDaysLeft(p.expiry);toast((d<0?'EXPIRED: ':'Renew soon: ')+p.name+(d>=0?' in '+d+'d':''),3500);});},500);
-    if('Notification'in window&&Notification.permission==='granted'){
-      urgent.forEach(function(p){var d=permitDaysLeft(p.expiry);new Notification('PackFast — Permit Alert',{body:(d<0?'EXPIRED: ':'Expires in '+d+' days: ')+p.name,icon:'icon.svg'});});
-    }
-  }
-}
-function renderPermits(){
-  if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();
-  var permits=getPermits();
-  var statusColors={ok:'var(--accent2)',warn:'#f5a623',danger:'var(--accent3)',expired:'#888'};
-  var barColors={ok:'linear-gradient(90deg,var(--accent2),rgba(245,166,35,0.4))',warn:'linear-gradient(90deg,#f5a623,rgba(245,166,35,0.4))',danger:'linear-gradient(90deg,var(--accent3),rgba(255,107,107,0.4))',expired:'var(--border)'};
-  var html='<div class="gcontent">';
-  html+='<div class="g-title">Permits & IDs</div>';
-  html+='<div class="g-sub">Track renewals. Get alerts before they expire.</div>';
-  if(permits.length){
-    html+='<div class="permit-grid">';
-    permits.forEach(function(p,i){
-      var days=permitDaysLeft(p.expiry);
-      var st=permitStatus(days);
-      var pct=Math.max(0,Math.min(100,st==='expired'?0:Math.round((days/365)*100)));
-      html+='<div class="permit-card">';
-      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-      html+='<div class="permit-type">'+p.name+'</div>';
-      html+='<div style="display:flex;gap:5px"><button onclick="permitEdit('+i+')" style="background:none;border:0.5px solid var(--border);color:var(--text3);font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer">Edit</button><button onclick="permitDelete('+i+')" style="background:none;border:0.5px solid rgba(255,107,107,0.3);color:var(--accent3);font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer">✕</button></div>';
-      html+='</div>';
-      html+='<div class="permit-status '+st+'" style="color:'+statusColors[st]+'">'+permitStatusLabel(days)+'</div>';
-      html+='<div class="permit-date">Expires '+new Date(p.expiry).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</div>';
-      if(p.notes)html+='<div style="font-size:10px;color:var(--text3);margin-top:4px">'+p.notes+'</div>';
-      html+='<div style="margin-top:12px"><div style="height:4px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+barColors[st]+';border-radius:3px;transition:width 0.6s ease"></div></div>';
-      html+='<div style="font-size:10px;color:var(--text3);margin-top:5px">'+(days<0?'Expired '+Math.abs(days)+' days ago':days+' days remaining')+'</div></div>';
-      html+='</div>';
-    });
-    html+='</div>';
-  }else{
-    html+='<div style="font-size:13px;color:var(--text3);padding:16px 0">No permits added yet.</div>';
-  }
-  /* Add form */
-  html+='<div style="margin-top:16px;background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px" id="permit-form">';
-  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:12px;letter-spacing:0.04em">+ Add Permit / ID</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
-  html+='<div><label style="font-size:10px;color:var(--text3);letter-spacing:0.08em">NAME</label><input id="pm-name" class="tms-input" placeholder="e.g. Drivers License" style="margin-top:4px"></div>';
-  html+='<div><label style="font-size:10px;color:var(--text3);letter-spacing:0.08em">EXPIRY DATE</label><input id="pm-expiry" class="tms-input" type="date" style="margin-top:4px"></div>';
-  html+='</div>';
-  html+='<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--text3);letter-spacing:0.08em">NOTES (optional)</label><input id="pm-notes" class="tms-input" placeholder="e.g. Renew at ServiceOntario" style="margin-top:4px;width:100%"></div>';
-  html+='<button class="tms-btn primary" onclick="permitAdd()">Add Permit</button>';
-  html+='</div></div>';
-  document.getElementById('content').innerHTML=html;
-}
-function permitAdd(){
-  var name=(document.getElementById('pm-name').value||'').trim();
-  var expiry=document.getElementById('pm-expiry').value;
-  var notes=(document.getElementById('pm-notes').value||'').trim();
-  if(!name||!expiry){sfxError();toast('Enter name and expiry date');return;}
-  var permits=getPermits();
-  permits.push({name:name,expiry:expiry,notes:notes});
-  savePermits(permits);
-  sfxSuccess();toast('Permit added · '+name);
-  renderPermits();
-}
-function permitDelete(i){
-  var permits=getPermits();permits.splice(i,1);savePermits(permits);sfxPop();toast('Permit removed');renderPermits();
-}
-function permitEdit(i){
-  var permits=getPermits();var p=permits[i];if(!p)return;
-  var name=prompt('Permit name:',p.name);if(name===null)return;
-  var expiry=prompt('Expiry (YYYY-MM-DD):',p.expiry);if(expiry===null)return;
-  var notes=prompt('Notes:',p.notes||'');
-  permits[i]={name:name.trim()||p.name,expiry:expiry.trim()||p.expiry,notes:(notes||'').trim()};
-  savePermits(permits);sfxSuccess();toast('Permit updated');renderPermits();
-}
-
-/* ════════════════════════════════════════
-   SOFTWARE STUDIO — AI dev-mode
-   ════════════════════════════════════════ */
-function getSWProjects(){try{return JSON.parse(localStorage.getItem('SW_PROJECTS')||'[]');}catch(e){return[];}}
-function saveSWProjects(arr){localStorage.setItem('SW_PROJECTS',JSON.stringify(arr));}
-function renderSoftware(){
-  var projects=getSWProjects();
-  var projHtml='';
-  if(projects.length){
-    projHtml='<div style="margin-top:14px"><div style="font-size:11px;color:var(--text3);letter-spacing:0.08em;margin-bottom:8px">SAVED PROJECTS</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">';
-    projects.slice().reverse().forEach(function(p,ri){
-      var i=projects.length-1-ri;
-      projHtml+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:12px">';
-      projHtml+='<div style="font-size:12px;color:var(--text);margin-bottom:4px">'+p.name+'</div>';
-      projHtml+='<div style="font-size:10px;color:var(--text3);margin-bottom:8px">'+new Date(p.date).toLocaleDateString()+'</div>';
-      projHtml+='<div style="display:flex;gap:6px"><button class="tms-btn sm" onclick="swLaunch('+i+')">Launch</button><button class="tms-btn sm" style="color:var(--accent3)" onclick="swDelete('+i+')">✕</button></div>';
-      projHtml+='</div>';
-    });
-    projHtml+='</div></div>';
-  }
-  document.getElementById('content').innerHTML=
-  '<div class="sw-wrap">'+
-  '<div>'+
-  '<div class="g-title">Software Studio</div>'+
-  '<div class="g-sub">Describe any app — rono.v1 builds it live and saves it.</div>'+
-  '</div>'+
-  '<div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;">'+
-  '<input id="sw-name" placeholder="Project name…" style="width:100%;background:transparent;border:none;border-bottom:0.5px solid var(--border);outline:none;color:var(--text);font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:300;padding:12px 20px;caret-color:var(--accent)">'+
-  '<textarea id="sw-prompt" placeholder="e.g. A dark-theme pomodoro timer with session tracking and a progress ring…" style="width:100%;background:transparent;border:none;outline:none;color:var(--text);font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:300;resize:none;padding:16px 20px 10px;line-height:1.7;caret-color:var(--accent);height:80px;"></textarea>'+
-  '<div style="display:flex;justify-content:flex-end;padding:10px 16px;border-top:0.5px solid var(--border)">'+
-  '<button class="trans-go-btn" onclick="buildSoftware()">Build with rono.v1 ↗</button>'+
-  '</div>'+
-  '</div>'+
-  '<div class="sw-out" id="sw-out">'+
-  '<div class="sw-empty-state">'+
-  '<div style="font-size:40px;opacity:0.3">⬡</div>'+
-  '<div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;opacity:0.3;margin-top:8px">Awaiting your idea</div>'+
-  '</div>'+
-  '</div>'+
-  projHtml+
-  '</div>';
-}
-function swLaunch(i){
-  var p=getSWProjects()[i];if(!p)return;
-  var w=window.open('','_blank');
-  w.document.open();w.document.write(p.html);w.document.close();
-}
-function swDelete(i){
-  var projects=getSWProjects();projects.splice(i,1);saveSWProjects(projects);sfxPop();toast('Project deleted');renderSoftware();
-}
-
-async function buildSoftware(){
-  var prompt=document.getElementById('sw-prompt');
-  if(!prompt)return;
-  var txt=prompt.value.trim();
-  if(!txt)return;
-  var out=document.getElementById('sw-out');
-  if(!out)return;
-
-  /* Building state */
-  out.innerHTML='<div class="sw-building"><div style="display:flex;gap:5px"><div class="td"></div><div class="td"></div><div class="td"></div></div><div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-top:4px">Building with rono.v1…</div></div>';
-  sfxSend();
-
-  try{
-    var r=await fetch(API,{
-      method:'POST',headers:hdrs(),
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:4096,
-        system:PROMPTS.software,
-        messages:[{role:'user',content:'Build this app: '+txt}]
-      })
-    });
-    if(!r.ok){var errD={};try{errD=await r.json();}catch(x){}out.innerHTML='<div class="sw-empty-state"><div style="color:var(--accent3);font-size:11px;opacity:1">API error '+r.status+': '+(errD.error&&errD.error.message||'Check API key.')+'</div></div>';sfxError();return;}
-    var d=await r.json();
-    if(d.error){out.innerHTML='<div class="sw-empty-state"><div style="color:var(--accent3);font-size:11px;opacity:1">Error: '+(d.error.message||'Unknown')+'</div></div>';sfxError();return;}
-    var code=(d.content&&d.content[0]&&d.content[0].text)||'';
-
-    /* Strip markdown fences if present */
-    var m=code.match(/```(?:html)?\n?([\s\S]*?)```/);
-    if(m)code=m[1].trim();
-    /* Ensure starts with <!DOCTYPE */
-    if(code.indexOf('<!DOCTYPE')===-1&&code.indexOf('<html')===-1){
-      code='<!DOCTYPE html><html><body>'+code+'</body></html>';
-    }
-
-    out.innerHTML='';
-    var iframe=document.createElement('iframe');
-    iframe.className='sw-frame';
-    iframe.sandbox='allow-scripts allow-same-origin';
-    out.appendChild(iframe);
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(code);
-    iframe.contentDocument.close();
-
-    /* Save project */
-    var nameEl=document.getElementById('sw-name');
-    var pName=(nameEl&&nameEl.value.trim())||txt.slice(0,40)+(txt.length>40?'…':'');
-    var projects=getSWProjects();
-    projects.push({name:pName,prompt:txt,html:code,date:Date.now()});
-    saveSWProjects(projects);
-
-    sfxSuccess();
-    toast('App built & saved · rono.v1');
-  }catch(e){
-    out.innerHTML='<div class="sw-empty-state"><div style="color:var(--accent3);font-size:11px;opacity:1">Build failed — check connection.</div></div>';
-    sfxError();
-  }
-}
-
-/* ════════════════════════════════════════
-   CODE STUDIO
-   ════════════════════════════════════════ */
-function getCSProjects(){try{return JSON.parse(localStorage.getItem('CS_PROJECTS')||'[]');}catch(e){return[];}}
-function saveCSProjects(a){localStorage.setItem('CS_PROJECTS',JSON.stringify(a));}
-var _cs={projectIdx:null,fileIdx:0,hist:[],previewMode:false};
-
-var CS_FILE_ICONS={'html':'🌐','css':'🎨','js':'⚡','ts':'🔷','jsx':'⚛','tsx':'⚛','py':'🐍','json':'{}','md':'📝','txt':'📄','sh':'$'};
-function csFileIcon(name){var ext=(name.split('.').pop()||'').toLowerCase();return CS_FILE_ICONS[ext]||'📄';}
-
-function renderCodeStudio(){
-  var projects=getCSProjects();
-  document.getElementById('content').innerHTML=
-  '<div class="cs-wrap">'+
-  /* Toolbar */
-  '<div class="cs-toolbar">'+
-  '<span style="font-size:11px;color:var(--text3);letter-spacing:0.08em;margin-right:4px">PROJECT</span>'+
-  '<select id="cs-proj-sel" class="tms-select" style="max-width:180px;font-size:11px" onchange="csOpenProject(parseInt(this.value))">'+
-  '<option value="-1">— select —</option>'+
-  projects.map(function(p,i){return'<option value="'+i+'"'+(i===_cs.projectIdx?' selected':'')+'>'+p.name+'</option>';}).join('')+
-  '</select>'+
-  '<button class="tms-btn sm primary" onclick="csNewProjectPrompt()">+ New</button>'+
-  '<button class="tms-btn sm" onclick="csNewFilePrompt()" id="cs-new-file-btn" style="display:none">+ File</button>'+
-  '<button class="tms-btn sm" onclick="csTogglePreview()" id="cs-preview-btn" style="display:none">▶ Preview</button>'+
-  '<button class="tms-btn sm" onclick="document.getElementById(\'cs-upload-input\').click()" id="cs-upload-btn" style="display:none">📁 Upload</button>'+
-  '<input type="file" id="cs-upload-input" style="display:none" multiple accept=".html,.css,.js,.ts,.json,.txt,.md,.py,.jsx,.tsx" onchange="csUploadFiles(this)">'+
-  '<button class="tms-btn sm" onclick="csDeleteProject()" id="cs-del-btn" style="color:var(--accent3);display:none">✕ Delete</button>'+
-  '<div style="margin-left:auto;font-size:10px;color:var(--text3)" id="cs-status">Open or create a project to start coding</div>'+
-  '</div>'+
-  /* Main 3-panel area */
-  '<div class="cs-main" id="cs-main">'+
-  /* Empty state */
-  '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--text3)">'+
-  '<div style="font-size:48px;opacity:0.15">&lt;/&gt;</div>'+
-  '<div style="font-size:13px;opacity:0.4">Create a project to start coding with rono.v1</div>'+
-  '<div style="display:flex;gap:10px">'+
-  '<button class="tms-btn primary" onclick="csNewProjectPrompt()">+ New Project</button>'+
-  (projects.length?'<button class="tms-btn" onclick="document.getElementById(\'cs-proj-sel\').focus()">Open Existing</button>':'')+
-  '</div>'+
-  '</div>'+
-  '</div>'+
-  '</div>';
-  /* Restore last open project if any */
-  if(_cs.projectIdx!==null&&projects[_cs.projectIdx]){
-    csRenderIDE();
-  }
-}
-
-function csNewProjectPrompt(){
-  var name=window.prompt('Project name:','MyApp');
-  if(!name||!name.trim())return;
-  name=name.trim();
-  var projects=getCSProjects();
-  /* Starter files */
-  projects.push({name:name,files:[
-    {name:'index.html',content:'<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n  <title>'+name+'<\/title>\n  <link rel="stylesheet" href="styles.css">\n<\/head>\n<body>\n\n  <script src="app.js"><\/script>\n<\/body>\n<\/html>'},
-    {name:'styles.css',content:'/* '+name+' styles */\n\nbody {\n  margin: 0;\n  font-family: system-ui, sans-serif;\n}\n'},
-    {name:'app.js',content:'// '+name+'\n\nconsole.log("'+name+' loaded");\n'}
-  ],created:Date.now()});
-  saveCSProjects(projects);
-  _cs.projectIdx=projects.length-1;
-  _cs.fileIdx=0;
-  _cs.hist=[];
-  sfxSuccess();toast('Project created · '+name);
-  renderCodeStudio();
-}
-
-function csOpenProject(idx){
-  if(idx<0)return;
-  _cs.projectIdx=idx;_cs.fileIdx=0;_cs.hist=[];_cs.previewMode=false;
-  csRenderIDE();
-}
-
-function csRenderIDE(){
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];
-  if(!proj)return;
-  var file=proj.files[_cs.fileIdx]||proj.files[0];
-  /* Show toolbar buttons */
-  ['cs-new-file-btn','cs-preview-btn','cs-upload-btn','cs-del-btn'].forEach(function(id){
-    var el=document.getElementById(id);if(el)el.style.display='';
-  });
-  document.getElementById('cs-status').textContent=proj.name+' · '+proj.files.length+' file'+(proj.files.length!==1?'s':'');
-  var sel=document.getElementById('cs-proj-sel');
-  if(sel)sel.value=_cs.projectIdx;
-  /* Build 3-panel layout */
-  var fileList=proj.files.map(function(f,i){
-    return '<div class="cs-file-item'+(i===_cs.fileIdx?' active':'')+'" onclick="csSelectFile('+i+')">'+
-    '<span class="cs-file-icon">'+csFileIcon(f.name)+'</span>'+f.name+
-    '<button onclick="event.stopPropagation();csDeleteFile('+i+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:10px;padding:0 2px;opacity:0;transition:opacity 0.15s" class="cs-del-file">✕</button>'+
-    '</div>';
-  }).join('');
-  var chatHtml=_cs.hist.map(function(m){return csMsgHtml(m);}).join('');
-  document.getElementById('cs-main').innerHTML=
-  /* File sidebar */
-  '<div class="cs-sidebar">'+
-  '<div class="cs-sidebar-hdr">Files</div>'+
-  '<div id="cs-file-list" style="flex:1;overflow-y:auto">'+fileList+'</div>'+
-  '</div>'+
-  /* Editor */
-  '<div class="cs-editor-pane" id="cs-editor-pane">'+
-  '<div class="cs-editor-bar">'+
-  '<span>'+csFileIcon(file.name)+'&nbsp;'+file.name+'</span>'+
-  '<div style="display:flex;gap:6px">'+
-  '<button class="tms-btn sm" onclick="csFormatSave()" style="font-size:9px">Save</button>'+
-  '</div>'+
-  '</div>'+
-  '<textarea class="cs-editor" id="cs-editor" spellcheck="false" onkeydown="csEditorKey(event)" oninput="csEditorChange()">'+csEsc(file.content)+'</textarea>'+
-  '</div>'+
-  /* Chat */
-  '<div class="cs-chat-pane">'+
-  '<div style="padding:10px 12px;border-bottom:0.5px solid var(--border);background:var(--surface2);font-size:10px;color:var(--text3);letter-spacing:0.08em;flex-shrink:0">AI CODING ASSISTANT · rono.v1</div>'+
-  '<div class="cs-chat-msgs" id="cs-chat-msgs">'+
-  (chatHtml||'<div style="font-size:11px;color:var(--text3);padding:8px 0">Tell rono.v1 what to build or fix. It will write or modify your code directly.<br><br>Examples:<br>· "Add a dark mode toggle"<br>· "Fix the layout on mobile"<br>· "Add a login form to index.html"<br>· "Create a new file called api.js"</div>')+
-  '</div>'+
-  '<div class="cs-input-area">'+
-  '<div class="cs-input-row">'+
-  '<textarea id="cs-chat-inp" class="cs-input" rows="1" placeholder="Describe what to build or fix…" onkeydown="csInputKey(event)" oninput="rzta(this)"></textarea>'+
-  '<button class="cs-send" onclick="csSend()"><svg width="11" height="11" viewBox="0 0 14 14" fill="none"><path d="M12 7L2 2l2.5 5L2 12l10-5z" fill="white"/></svg></button>'+
-  '</div>'+
-  '</div>'+
-  '</div>';
-  /* Hover show delete on file items */
-  document.querySelectorAll('.cs-file-item').forEach(function(el){
-    el.addEventListener('mouseenter',function(){var b=el.querySelector('.cs-del-file');if(b)b.style.opacity='0.5';});
-    el.addEventListener('mouseleave',function(){var b=el.querySelector('.cs-del-file');if(b)b.style.opacity='0';});
-  });
-  var msgs=document.getElementById('cs-chat-msgs');
-  if(msgs)msgs.scrollTop=msgs.scrollHeight;
-}
-
-function csMsgHtml(m){
-  if(m.role==='user')return '<div class="cs-msg user">'+csEsc(m.content)+'</div>';
-  /* AI message — may contain file blocks to apply */
-  var text=m.content;
-  var applyBtns='';
-  var fileBlocks=[];
-  var re=/\[FILE:([\w.\-\/]+)\]([\s\S]*?)\[\/FILE\]/g;
-  var match;
-  while((match=re.exec(text))!==null){
-    var fname=match[1];var fcontent=match[2].replace(/^\n/,'').replace(/\n$/,'');
-    fileBlocks.push({name:fname,content:fcontent});
-    applyBtns+='<button class="cs-apply-btn" onclick="csApplyBlock(\''+csEscAttr(fname)+'\',\''+csEscAttr(fcontent)+'\')">↓ Apply '+fname+'</button> ';
-  }
-  /* Strip file blocks from display text */
-  var display=text.replace(/\[FILE:[\w.\-\/]+\][\s\S]*?\[\/FILE\]/g,'').trim();
-  return '<div class="cs-msg ai"><div class="cs-msg-text">'+display.replace(/\n/g,'<br>')+'</div>'+(applyBtns?'<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">'+applyBtns+'</div>':'')+'</div>';
-}
-
-function csEsc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function csEscAttr(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'');}
-
-function csSelectFile(i){
-  /* Save current editor content first */
-  csSaveCurrentFile();
-  _cs.fileIdx=i;
-  csRenderIDE();
-}
-
-function csSaveCurrentFile(){
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj)return;
-  var ed=document.getElementById('cs-editor');if(!ed)return;
-  if(proj.files[_cs.fileIdx])proj.files[_cs.fileIdx].content=ed.value;
-  saveCSProjects(projects);
-}
-
-function csEditorChange(){
-  /* Auto-save on change (debounced) */
-  clearTimeout(window._csAutosave);
-  window._csAutosave=setTimeout(csSaveCurrentFile,800);
-}
-
-function csFormatSave(){
-  csSaveCurrentFile();sfxSuccess();toast('Saved');
-}
-
-function csEditorKey(e){
-  /* Tab → insert 2 spaces */
-  if(e.key==='Tab'){
-    e.preventDefault();
-    var ta=e.target;var s=ta.selectionStart,en=ta.selectionEnd;
-    ta.value=ta.value.substring(0,s)+'  '+ta.value.substring(en);
-    ta.selectionStart=ta.selectionEnd=s+2;
-  }
-}
-
-function csNewFilePrompt(){
-  var name=window.prompt('File name (e.g. utils.js):','');
-  if(!name||!name.trim())return;
-  name=name.trim();
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj)return;
-  if(proj.files.find(function(f){return f.name===name;})){sfxError();toast('File already exists');return;}
-  proj.files.push({name:name,content:'// '+name+'\n'});
-  _cs.fileIdx=proj.files.length-1;
-  saveCSProjects(projects);
-  sfxSuccess();toast('File created · '+name);csRenderIDE();
-}
-
-function csDeleteFile(i){
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj||proj.files.length<=1){toast('Need at least one file');return;}
-  if(!confirm('Delete '+proj.files[i].name+'?'))return;
-  proj.files.splice(i,1);
-  _cs.fileIdx=Math.max(0,_cs.fileIdx-1);
-  saveCSProjects(projects);
-  sfxPop();csRenderIDE();
-}
-
-function csDeleteProject(){
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj)return;
-  if(!confirm('Delete project "'+proj.name+'"? This cannot be undone.'))return;
-  projects.splice(_cs.projectIdx,1);
-  saveCSProjects(projects);
-  _cs.projectIdx=projects.length>0?0:null;
-  _cs.fileIdx=0;_cs.hist=[];
-  sfxPop();toast('Project deleted');renderCodeStudio();
-}
-
-function csTogglePreview(){
-  csSaveCurrentFile();
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj)return;
-  /* Build preview HTML — inject all files */
-  var html=proj.files.find(function(f){return f.name==='index.html';});
-  var css=proj.files.find(function(f){return f.name==='styles.css'||f.name.endsWith('.css');});
-  var js=proj.files.filter(function(f){return f.name.endsWith('.js');});
-  var doc=html?html.content:'<html><body><p style="font:14px/2 sans-serif;padding:20px;color:#888">No index.html — add one to preview.</p></body></html>';
-  /* Inline CSS and JS */
-  if(css)doc=doc.replace('<\/head>','<style>'+css.content+'<\/style><\/head>').replace('href="styles.css"','');
-  js.forEach(function(f){doc=doc.replace('<script src="'+f.name+'"><\/script>','<script>'+f.content+'<\/script>');});
-  var pane=document.getElementById('cs-editor-pane');
-  if(!pane)return;
-  _cs.previewMode=!_cs.previewMode;
-  if(_cs.previewMode){
-    pane.innerHTML='<div class="cs-editor-bar"><span>👁 Preview</span><button class="tms-btn sm" onclick="csTogglePreview()">← Editor</button></div><iframe class="cs-preview-frame" sandbox="allow-scripts" id="cs-iframe"></iframe>';
-    var fr=document.getElementById('cs-iframe');
-    fr.contentDocument.open();fr.contentDocument.write(doc);fr.contentDocument.close();
-    document.getElementById('cs-preview-btn').textContent='← Edit';
-  }else{
-    csRenderIDE();
-    document.getElementById('cs-preview-btn').textContent='▶ Preview';
-  }
-}
-
-function csApplyBlock(fname,content){
-  /* Unescape */
-  fname=fname.replace(/\\n/g,'\n').replace(/\\'/g,"'");
-  content=content.replace(/\\n/g,'\n').replace(/\\'/g,"'");
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj)return;
-  var existing=proj.files.findIndex(function(f){return f.name===fname;});
-  if(existing!==-1){
-    proj.files[existing].content=content;
-    if(_cs.fileIdx===existing){var ed=document.getElementById('cs-editor');if(ed)ed.value=content;}
-  }else{
-    proj.files.push({name:fname,content:content});
-    _cs.fileIdx=proj.files.length-1;
-  }
-  saveCSProjects(projects);
-  sfxSuccess();toast('Applied · '+fname);
-  csRenderIDE();
-}
-
-function csInputKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();csSend();}}
-
-async function csSend(){
-  var inp=document.getElementById('cs-chat-inp');if(!inp)return;
-  var txt=inp.value.trim();if(!txt)return;
-  inp.value='';inp.style.height='auto';
-  csSaveCurrentFile();
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];if(!proj)return;
-  var file=proj.files[_cs.fileIdx];
-  /* Build context — current file + all filenames */
-  var fileContext='Project: '+proj.name+'\nFiles: '+proj.files.map(function(f){return f.name;}).join(', ')+'\n\nCurrent file ('+file.name+'):\n```\n'+file.content.slice(0,3000)+'\n```';
-  var allFilesCtx='';
-  proj.files.forEach(function(f){
-    if(f.name!==file.name)allFilesCtx+='\n\n---\n'+f.name+':\n```\n'+f.content.slice(0,800)+'\n```';
-  });
-  _cs.hist.push({role:'user',content:txt});
-  /* Append user msg */
-  var msgs=document.getElementById('cs-chat-msgs');
-  if(msgs){
-    var d=document.createElement('div');d.innerHTML=csMsgHtml({role:'user',content:txt});
-    msgs.appendChild(d.firstChild);msgs.scrollTop=msgs.scrollHeight;
-    /* Typing indicator */
-    var typ=document.createElement('div');typ.id='cs-typing';typ.className='cs-msg ai';
-    typ.innerHTML='<div class="cs-msg-text"><div class="typ"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';
-    msgs.appendChild(typ);msgs.scrollTop=msgs.scrollHeight;
-  }
-  sfxSend();
-  try{
-    var sysPrompt='You are rono.v1, an expert AI coding assistant inside toi.ai. Help the user write, modify, and debug code.\n\nWhen you need to create or modify a file, output the COMPLETE updated file content using this exact format:\n[FILE:filename.ext]\n...full file content...\n[/FILE]\n\nRules:\n- Always output the COMPLETE file content, never partial snippets\n- You can output multiple [FILE:...][/FILE] blocks if modifying multiple files\n- Put your brief explanation BEFORE the file blocks\n- Support any language: HTML, CSS, JS, TypeScript, Python, etc.\n- Be concise in explanations — let the code speak\n- Never mention Claude or Anthropic\n\n'+fileContext+allFilesCtx;
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,system:sysPrompt,messages:_cs.hist})});
-    var data=await r.json();
-    var typ2=document.getElementById('cs-typing');if(typ2)typ2.remove();
-    if(data.error){var em={role:'assistant',content:'Error: '+(data.error.message||'API error')};_cs.hist.push(em);var d2=document.createElement('div');d2.innerHTML=csMsgHtml(em);if(msgs){msgs.appendChild(d2.firstChild);msgs.scrollTop=msgs.scrollHeight;}sfxError();return;}
-    var rep=(data.content&&data.content[0]&&data.content[0].text)||'';
-    _cs.hist.push({role:'assistant',content:rep});
-    var d3=document.createElement('div');d3.innerHTML=csMsgHtml({role:'assistant',content:rep});
-    if(msgs){msgs.appendChild(d3.firstChild);msgs.scrollTop=msgs.scrollHeight;}
-    sfxReceive();
-    /* Auto-apply if only one file block and it matches current file */
-    var autoMatch=rep.match(/\[FILE:([\w.\-\/]+)\]([\s\S]*?)\[\/FILE\]/g);
-    if(autoMatch&&autoMatch.length===1){
-      var am=/\[FILE:([\w.\-\/]+)\]([\s\S]*?)\[\/FILE\]/.exec(rep);
-      if(am&&am[1]===file.name){
-        csApplyBlock(am[1],am[2].replace(/^\n/,'').replace(/\n$/,''));
-        /* Update apply button to show applied */
-        var applyBtns=msgs.querySelectorAll('.cs-apply-btn');
-        applyBtns.forEach(function(b){b.textContent='✓ Applied';b.style.color='var(--accent2)';b.disabled=true;});
-      }
-    }
-  }catch(err){
-    var te=document.getElementById('cs-typing');if(te)te.remove();
-    var em2={role:'assistant',content:'Connection failed: '+(err.message||'Check your internet.')};
-    _cs.hist.push(em2);var d4=document.createElement('div');d4.innerHTML=csMsgHtml(em2);
-    if(msgs){msgs.appendChild(d4.firstChild);msgs.scrollTop=msgs.scrollHeight;}
-    sfxError();
-  }
-}
-
-/* ════════════════════════════════════════
-   LEGAL — Personal Virtual Lawyer
-   ════════════════════════════════════════ */
-var _legalHist=[];
-/* ════════════════════════════════════════
-   DAILY GOALS
-   ════════════════════════════════════════ */
-function _goalsKey(){return 'TOI_GOALS_'+(new Date().toISOString().slice(0,10));}
-function _loadGoals(){try{return JSON.parse(localStorage.getItem(_goalsKey())||'[]');}catch(e){return[];}}
-function _saveGoals(g){localStorage.setItem(_goalsKey(),JSON.stringify(g));}
-function renderGoals(){
-  var today=new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
-  var goals=_loadGoals();
-  var done=goals.filter(function(g){return g.done;}).length;
-  var pct=goals.length?Math.round(done/goals.length*100):0;
-  var rows=goals.length?goals.map(function(g,i){
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border:0.5px solid '+(g.done?'rgba(245,166,35,0.2)':'var(--border)')+';border-radius:10px;margin-bottom:8px;transition:all 0.2s">'+
-    '<div onclick="goalsToggle('+i+')" style="width:18px;height:18px;border-radius:50%;border:0.5px solid '+(g.done?'rgba(245,166,35,0.6)':'rgba(255,255,255,0.15)')+';background:'+(g.done?'rgba(245,166,35,0.15)':'transparent')+';cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px">'+(g.done?'✓':'')+'</div>'+
-    '<div style="flex:1;font-size:13px;color:'+(g.done?'var(--text3)':'var(--text)')+';text-decoration:'+(g.done?'line-through':'none')+';line-height:1.4">'+g.text+'</div>'+
-    '<button onclick="goalsRemove('+i+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;opacity:0.5;flex-shrink:0">✕</button>'+
-    '</div>';
-  }).join(''):'<div style="font-size:12px;color:var(--text3);padding:12px 0">No goals yet — add your first intention below.</div>';
-  document.getElementById('content').innerHTML=
-  '<div style="max-width:600px;padding:28px 20px 60px">'+
-  '<div style="font-size:10px;letter-spacing:0.14em;color:var(--text3);margin-bottom:4px">TODAY</div>'+
-  '<div style="font-size:20px;font-weight:300;color:var(--text);margin-bottom:20px">'+today+'</div>'+
-  (goals.length?
-  '<div style="margin-bottom:16px">'+
-  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-  '<span style="font-size:11px;color:var(--text3)">'+done+' of '+goals.length+' completed</span>'+
-  '<span style="font-size:11px;color:'+(pct===100?'var(--accent2)':'var(--accent)')+'">'+(pct===100?'🎯 All done!':pct+'%')+'</span></div>'+
-  '<div style="height:3px;background:rgba(255,255,255,0.05);border-radius:2px"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width 0.4s"></div></div>'+
-  '</div>':'')  +
-  '<div id="goals-list">'+rows+'</div>'+
-  '<div style="display:flex;gap:8px;margin-top:16px">'+
-  '<input id="goals-inp" class="tms-input" placeholder="Write a goal for today…" style="flex:1" onkeydown="if(event.key===\'Enter\')goalsAdd()">'+
-  '<button class="tms-btn primary" onclick="goalsAdd()" style="flex-shrink:0">Add</button>'+
-  '</div>'+
-  (goals.length?'<button onclick="goalsClearDone()" style="margin-top:12px;background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;text-decoration:underline">Clear completed</button>':'')+
-  '</div>';
-  var inp=document.getElementById('goals-inp');
-  if(inp)setTimeout(function(){inp.focus();},80);
-}
-function goalsAdd(){
-  var inp=document.getElementById('goals-inp');
-  var txt=(inp?inp.value:'').trim();
-  if(!txt){sfxError();return;}
-  var goals=_loadGoals();
-  goals.push({text:txt,done:false,created:new Date().toISOString()});
-  _saveGoals(goals);sfxSuccess();renderGoals();
-}
-function goalsToggle(i){
-  var goals=_loadGoals();
-  if(goals[i])goals[i].done=!goals[i].done;
-  _saveGoals(goals);sfxClick();renderGoals();
-}
-function goalsRemove(i){
-  var goals=_loadGoals();
-  goals.splice(i,1);
-  _saveGoals(goals);sfxPop();renderGoals();
-}
-function goalsClearDone(){
-  var goals=_loadGoals().filter(function(g){return !g.done;});
-  _saveGoals(goals);sfxPop();renderGoals();
-}
-
-function renderLegal(){
-  _legalHist=[];
-  document.getElementById('content').innerHTML=
-  '<div class="chat-wrap">'+
-  '<div class="msgs" id="msgs">'+
-  '<div class="welcome" id="welcome">'+
-  '<div class="w-orb" style="font-size:32px">⚖️</div>'+
-  '<h2>Legal Advisor</h2>'+
-  '<p>Your private virtual lawyer — powered by rono.v1.</p>'+
-  '<p class="w-note" style="color:var(--accent3);font-size:11px">AI guidance only · always consult a licensed attorney for binding decisions</p>'+
-  '<div class="chips">'+
-  '<button class="chip" onclick="legalSuggest(\'Review this contract for red flags\')">Review a contract</button>'+
-  '<button class="chip" onclick="legalSuggest(\'What are my rights as a tenant?\')">Tenant rights</button>'+
-  '<button class="chip" onclick="legalSuggest(\'Draft a simple NDA for me\')">Draft an NDA</button>'+
-  '</div></div></div>'+
-  '<div class="input-area">'+
-  '<div class="irow">'+
-  '<textarea id="legal-inp" rows="1" placeholder="Ask your legal question…" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();legalSend();}" oninput="rzta(this)"></textarea>'+
-  '<div class="iacts"><button class="ibtn" onclick="legalSend()"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>'+
-  '</div></div></div>';
-}
-function legalSuggest(t){var i=document.getElementById('legal-inp');if(i){i.value=t;legalSend();}}
-async function legalSend(){
-  var inp=document.getElementById('legal-inp');if(!inp||!inp.value.trim())return;
-  var txt=inp.value.trim();inp.value='';rzta(inp);
-  var msgs=document.getElementById('msgs');if(!msgs)return;
-  var w=document.getElementById('welcome');if(w)w.style.display='none';
-  msgs.innerHTML+='<div class="msg user"><div class="bub">'+txt+'</div></div>';
-  msgs.scrollTop=msgs.scrollHeight;
-  _legalHist.push({role:'user',content:txt});
-  var thinking=document.createElement('div');thinking.className='msg ai';thinking.innerHTML='<div class="bub"><div style="display:flex;gap:4px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';msgs.appendChild(thinking);msgs.scrollTop=msgs.scrollHeight;
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:PROMPTS.legal,messages:_legalHist})});
-    if(!r.ok){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Error — check connection.</div></div>';return;}
-    var d=await r.json();
-    var reply=(d.content&&d.content[0]&&d.content[0].text)||'No response.';
-    _legalHist.push({role:'assistant',content:reply});
-    thinking.remove();
-    msgs.innerHTML+='<div class="msg ai"><div class="bub">'+reply.replace(/\n/g,'<br>')+'</div></div>';
-    msgs.scrollTop=msgs.scrollHeight;sfxReceive();
-  }catch(e){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Connection failed.</div></div>';}
-}
-
-/* ════════════════════════════════════════
-   LEGAL — Business Corporate Lawyer
-   ════════════════════════════════════════ */
-var _bizLegalHist=[];
-function renderBizLegal(){
-  _bizLegalHist=[];
-  document.getElementById('content').innerHTML=
-  '<div class="chat-wrap">'+
-  '<div class="msgs" id="msgs">'+
-  '<div class="welcome" id="welcome">'+
-  '<div class="w-orb" style="font-size:32px">⚖️</div>'+
-  '<h2>Business Legal</h2>'+
-  '<p>Corporate law, contracts, IP & compliance — rono.v1.</p>'+
-  '<p class="w-note" style="color:var(--accent3);font-size:11px">AI guidance only · always consult a licensed attorney for binding decisions</p>'+
-  '<div class="chips">'+
-  '<button class="chip" onclick="bizLegalSuggest(\'Review this business contract\')">Review contract</button>'+
-  '<button class="chip" onclick="bizLegalSuggest(\'How do I protect my intellectual property?\')">IP protection</button>'+
-  '<button class="chip" onclick="bizLegalSuggest(\'What business structure should I use?\')">Business structure</button>'+
-  '</div></div></div>'+
-  '<div class="input-area">'+
-  '<div class="irow">'+
-  '<textarea id="bizlegal-inp" rows="1" placeholder="Ask your business legal question…" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();bizLegalSend();}" oninput="rzta(this)"></textarea>'+
-  '<div class="iacts"><button class="ibtn" onclick="bizLegalSend()"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>'+
-  '</div></div></div>';
-}
-function bizLegalSuggest(t){var i=document.getElementById('bizlegal-inp');if(i){i.value=t;bizLegalSend();}}
-async function bizLegalSend(){
-  var inp=document.getElementById('bizlegal-inp');if(!inp||!inp.value.trim())return;
-  var txt=inp.value.trim();inp.value='';rzta(inp);
-  var msgs=document.getElementById('msgs');if(!msgs)return;
-  var w=document.getElementById('welcome');if(w)w.style.display='none';
-  msgs.innerHTML+='<div class="msg user"><div class="bub">'+txt+'</div></div>';
-  msgs.scrollTop=msgs.scrollHeight;
-  _bizLegalHist.push({role:'user',content:txt});
-  var thinking=document.createElement('div');thinking.className='msg ai';thinking.innerHTML='<div class="bub"><div style="display:flex;gap:4px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';msgs.appendChild(thinking);msgs.scrollTop=msgs.scrollHeight;
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:PROMPTS.bizlegal,messages:_bizLegalHist})});
-    if(!r.ok){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Error — check connection.</div></div>';return;}
-    var d=await r.json();
-    var reply=(d.content&&d.content[0]&&d.content[0].text)||'No response.';
-    _bizLegalHist.push({role:'assistant',content:reply});
-    thinking.remove();
-    msgs.innerHTML+='<div class="msg ai"><div class="bub">'+reply.replace(/\n/g,'<br>')+'</div></div>';
-    msgs.scrollTop=msgs.scrollHeight;sfxReceive();
-  }catch(e){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Connection failed.</div></div>';}
-}
-
-/* ════════════════════════════════════════
-   BUSINESS FINANCE — Banking + Tax
-   ════════════════════════════════════════ */
-function renderBizFinance(){
-  sfxCoin();
-  var txns=getFinanceTxn('BIZ_FINANCE_TXN');
-  var tableHtml=txns.length?financeRenderTxnTable(txns):'';
-  document.getElementById('content').innerHTML=
-  '<div class="gcontent">'+
-  '<div class="g-title">Business Finance</div>'+
-  '<div class="g-sub">Import business bank statements, track expenses, and prepare corporate tax.</div>'+
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">'+
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;letter-spacing:0.04em">CONNECT BUSINESS BANK — Export CSV from your portal</div>'+
-  '<div style="font-size:10px;color:var(--text3);margin-bottom:10px">CIBC Business: My Accounts → Transactions → Export CSV &nbsp;|&nbsp; JPMorgan: Accounts → Download Transactions → CSV</div>'+
-  '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-  '<button class="trans-go-btn" onclick="document.getElementById(\'bizfin-csv\').click()">📥 Import CSV</button>'+
-  '<button class="tms-btn" onclick="document.getElementById(\'bizfin-pdf\').click()" style="background:rgba(245,166,35,0.08);border-color:rgba(245,166,35,0.25);color:var(--accent2)">📄 Upload PDF / Invoice</button>'+
-  '<button class="tms-btn" onclick="showDataImport(\'Business Finance\')">📦 Import from Previous Software</button>'+
-  (txns.length?'<button class="tms-btn" onclick="bizFinTaxSummary()">🧾 Corporate Tax Summary</button>':'')+''+
-  (txns.length?'<button class="tms-btn" onclick="if(confirm(\'Clear all transactions?\')){localStorage.removeItem(\'BIZ_FINANCE_TXN\');renderBizFinance();}">✕ Clear</button>':'')+
-  '</div>'+
-  '<input type="file" id="bizfin-csv" accept=".csv,.txt" style="display:none" onchange="finImportCSV(this,\'BIZ_FINANCE_TXN\',renderBizFinance)">'+
-  '<input type="file" id="bizfin-pdf" accept=".pdf,.jpg,.jpeg,.png,.txt" style="display:none" onchange="finImportPDF(this,\'BIZ_FINANCE_TXN\',\'biz-fin-result\',renderBizFinance)">'+
-  '</div>'+
-  (tableHtml||'<div style="font-size:13px;color:var(--text3);padding:8px 0">No transactions yet. Import a business bank CSV above.</div>')+
-  '<div id="biz-fin-result"></div>'+
-  '</div>';
-}
-async function bizFinTaxSummary(){
-  var txns=getFinanceTxn('BIZ_FINANCE_TXN');
-  var res=document.getElementById('biz-fin-result');
-  if(!txns.length||!res){toast('No transactions to analyse');return;}
-  res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0"><div class="td"></div> Preparing corporate tax summary…</div>';
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:PROMPTS.tax_summary+' Focus on corporate deductions, GST/HST, and business expense categories.',messages:[{role:'user',content:'Business transactions:\n'+JSON.stringify(txns.slice(0,100))}]})});
-    if(!r.ok){res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error — try again.</div>';return;}
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'Could not generate.';
-    res.innerHTML='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-top:14px"><div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.8">'+text+'</div></div>';
-    sfxReceive();
-  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-}
-
-/* ════════════════════════════════════════
-   TECH — Gadget Project Studio
-   ════════════════════════════════════════ */
-function getTechProjects(){try{return JSON.parse(localStorage.getItem('TECH_PROJECTS')||'[]');}catch(e){return[];}}
-function saveTechProjects(arr){localStorage.setItem('TECH_PROJECTS',JSON.stringify(arr));}
-function renderTech(){
-  sfxWhoosh();
-  var projects=getTechProjects();
-  var types=['Watch','Computer','Vehicle','Phone','Drone','Other'];
-  var statuses=['Concept','In Progress','Built'];
-  var html='<div class="gcontent"><div class="g-title">Tech Studio</div><div class="g-sub">Design gadgets, build specs with AI, track your projects.</div>';
-  /* New project form */
-  html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px">';
-  html+='<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:12px">+ NEW TECH PROJECT</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
-  html+='<div><label style="font-size:10px;color:var(--text3)">PROJECT NAME</label><input id="tech-name" class="tms-input" placeholder="e.g. Smart Watch v2" style="margin-top:4px"></div>';
-  html+='<div><label style="font-size:10px;color:var(--text3)">TYPE</label><select id="tech-type" class="tms-select" style="margin-top:4px">'+types.map(function(t){return'<option>'+t+'</option>';}).join('')+'</select></div>';
-  html+='</div>';
-  html+='<textarea id="tech-desc" placeholder="Describe your gadget concept in detail…" style="width:100%;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-family:Helvetica,Arial,sans-serif;font-size:13px;padding:10px;resize:none;height:60px;outline:none;margin-bottom:10px"></textarea>';
-  html+='<div style="display:flex;gap:8px"><button class="trans-go-btn" onclick="techGenerate()">Generate Spec Sheet →</button><button class="tms-btn" onclick="techSave()">Save Concept</button></div>';
-  html+='<div id="tech-ai-result" style="margin-top:10px"></div>';
-  html+='</div>';
-  /* Project list */
-  if(projects.length){
-    html+='<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:10px">MY PROJECTS</div>';
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">';
-    projects.slice().reverse().forEach(function(p,ri){
-      var i=projects.length-1-ri;
-      var stColor={Concept:'var(--text3)','In Progress':'#f5a623',Built:'var(--accent2)'};
-      html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px">';
-      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">';
-      html+='<div style="font-size:13px;color:var(--text)">'+p.name+'</div>';
-      html+='<button onclick="techDelete('+i+')" style="background:none;border:none;color:var(--accent3);cursor:pointer;font-size:10px">✕</button>';
-      html+='</div>';
-      html+='<div style="display:flex;gap:6px;margin-bottom:8px"><span style="font-size:10px;background:rgba(224,123,32,0.1);color:var(--accent);padding:2px 8px;border-radius:10px">'+p.type+'</span><span style="font-size:10px;color:'+stColor[p.status]+';padding:2px 0">'+p.status+'</span></div>';
-      if(p.desc)html+='<div style="font-size:11px;color:var(--text3);line-height:1.5;margin-bottom:8px">'+p.desc.slice(0,80)+(p.desc.length>80?'…':'')+'</div>';
-      html+='<select onchange="techUpdateStatus('+i+',this.value)" style="background:var(--surface);border:0.5px solid var(--border);color:var(--text);font-size:10px;padding:3px 6px;border-radius:6px;width:100%">'+statuses.map(function(s){return'<option'+(s===p.status?' selected':'')+'>'+s+'</option>';}).join('')+'</select>';
-      html+='</div>';
-    });
-    html+='</div>';
-  }
-  html+='</div>';
-  document.getElementById('content').innerHTML=html;
-}
-async function techGenerate(){
-  var name=(document.getElementById('tech-name').value||'').trim();
-  var type=document.getElementById('tech-type').value;
-  var desc=(document.getElementById('tech-desc').value||'').trim();
-  var res=document.getElementById('tech-ai-result');
-  if(!desc){sfxError();toast('Describe your gadget first');return;}
-  res.innerHTML='<div style="font-size:12px;color:var(--text3)"><div class="td"></div> Generating spec sheet…</div>';
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:'You are a world-class product engineer and industrial designer. Generate a complete spec sheet for this tech gadget:\n\nType: '+type+'\nName: '+(name||'Unnamed')+'\nDescription: '+desc+'\n\nInclude: core hardware components, key features, dimensions, materials, estimated BOM cost, manufacturing approach, target market, and one unique differentiator. Format as clean readable text.'}]})});
-    if(!r.ok){res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error.</div>';return;}
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'Could not generate.';
-    res.innerHTML='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.7">'+text+'</div>';
-    sfxReceive();
-  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-}
-function techSave(){
-  var name=(document.getElementById('tech-name').value||'').trim();
-  var type=document.getElementById('tech-type').value;
-  var desc=(document.getElementById('tech-desc').value||'').trim();
-  if(!name){sfxError();toast('Enter a project name');return;}
-  var projects=getTechProjects();
-  projects.push({name:name,type:type,desc:desc,status:'Concept',date:Date.now()});
-  saveTechProjects(projects);sfxSuccess();toast('Project saved · '+name);renderTech();
-}
-function techDelete(i){var p=getTechProjects();p.splice(i,1);saveTechProjects(p);sfxPop();toast('Project deleted');renderTech();}
-function techUpdateStatus(i,status){var p=getTechProjects();if(p[i])p[i].status=status;saveTechProjects(p);sfxPop();}
-
-/* ════════════════════════════════════════
-   ENTERTAINMENT — Creative Sandbox
-   ════════════════════════════════════════ */
-function getEntProjects(){try{return JSON.parse(localStorage.getItem('ENT_PROJECTS')||'[]');}catch(e){return[];}}
-function saveEntProjects(arr){localStorage.setItem('ENT_PROJECTS',JSON.stringify(arr));}
-function renderEntertainment(){
-  sfxWhoosh();
-  var projects=getEntProjects();
-  var projHtml='';
-  if(projects.length){
-    projHtml='<div style="margin-top:16px"><div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:8px">SAVED CREATIONS</div>';
-    projHtml+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px">';
-    projects.slice().reverse().forEach(function(p,ri){
-      var i=projects.length-1-ri;
-      projHtml+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:12px">';
-      projHtml+='<div style="font-size:12px;color:var(--text);margin-bottom:4px">'+p.name+'</div>';
-      projHtml+='<div style="font-size:10px;color:var(--text3);margin-bottom:8px">'+new Date(p.date).toLocaleDateString()+'</div>';
-      projHtml+='<div style="display:flex;gap:6px"><button class="tms-btn sm" onclick="entLaunch('+i+')">▶ Open</button><button class="tms-btn sm" style="color:var(--accent3)" onclick="entDelete('+i+')">✕</button></div>';
-      projHtml+='</div>';
-    });
-    projHtml+='</div></div>';
-  }
-  document.getElementById('content').innerHTML=
-  '<div class="sw-wrap">'+
-  '<div><div class="g-title">🎮 Entertainment Sandbox</div><div class="g-sub">Describe anything — a game, app, tool, or experience — and AI builds it live.</div></div>'+
-  '<div style="flex-shrink:0;background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden;">'+
-  '<input id="ent-name" placeholder="Creation name…" style="width:100%;background:transparent;border:none;border-bottom:0.5px solid var(--border);outline:none;color:var(--text);font-family:Helvetica,Arial,sans-serif;font-size:13px;padding:12px 20px;caret-color:var(--accent)">'+
-  '<textarea id="ent-prompt" placeholder="e.g. Build me a fun snake game with dark theme and a score tracker…" style="width:100%;background:transparent;border:none;outline:none;color:var(--text);font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:300;resize:none;padding:16px 20px 10px;line-height:1.7;caret-color:var(--accent);height:80px;"></textarea>'+
-  '<div style="display:flex;justify-content:flex-end;padding:10px 16px;border-top:0.5px solid var(--border)">'+
-  '<button class="trans-go-btn" onclick="entBuild()">Build it ↗</button>'+
-  '</div></div>'+
-  '<div class="sw-out" id="ent-out"><div class="sw-empty-state"><div style="font-size:40px;opacity:0.3">🎮</div><div style="font-size:10px;letter-spacing:0.14em;text-transform:uppercase;opacity:0.3;margin-top:8px">Your creation appears here</div></div></div>'+
-  projHtml+'</div>';
-}
-async function entBuild(){
-  var nameEl=document.getElementById('ent-name');
-  var promptEl=document.getElementById('ent-prompt');
-  var out=document.getElementById('ent-out');
-  if(!promptEl||!out)return;
-  var txt=promptEl.value.trim();if(!txt)return;
-  out.innerHTML='<div class="sw-building"><div style="display:flex;gap:5px"><div class="td"></div><div class="td"></div><div class="td"></div></div><div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-top:4px">Building…</div></div>';
-  sfxSend();
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4096,system:PROMPTS.software+' The user is building entertainment content — games, interactive experiences, or fun tools.',messages:[{role:'user',content:'Build this: '+txt}]})});
-    if(!r.ok){out.innerHTML='<div class="sw-empty-state"><div style="color:var(--accent3);font-size:12px">API error — try again.</div></div>';sfxError();return;}
-    var d=await r.json();
-    var code=(d.content&&d.content[0]&&d.content[0].text)||'';
-    var m=code.match(/```(?:html)?\n?([\s\S]*?)```/);if(m)code=m[1].trim();
-    if(code.indexOf('<!DOCTYPE')===-1&&code.indexOf('<html')===-1)code='<!DOCTYPE html><html><body>'+code+'</body></html>';
-    out.innerHTML='';
-    var iframe=document.createElement('iframe');iframe.className='sw-frame';iframe.sandbox='allow-scripts allow-same-origin';out.appendChild(iframe);
-    iframe.contentDocument.open();iframe.contentDocument.write(code);iframe.contentDocument.close();
-    var pName=(nameEl&&nameEl.value.trim())||txt.slice(0,40);
-    var projects=getEntProjects();projects.push({name:pName,prompt:txt,html:code,date:Date.now()});saveEntProjects(projects);
-    sfxSuccess();toast('Creation built & saved');
-  }catch(ex){out.innerHTML='<div class="sw-empty-state"><div style="color:var(--accent3);font-size:12px">Build failed.</div></div>';sfxError();}
-}
-function entLaunch(i){var p=getEntProjects()[i];if(!p)return;var w=window.open('','_blank');w.document.open();w.document.write(p.html);w.document.close();}
-function entDelete(i){var p=getEntProjects();p.splice(i,1);saveEntProjects(p);sfxPop();toast('Deleted');renderEntertainment();}
-
-/* ════════════════════════════════════════
-   REAL ESTATE — Property Management
-   ════════════════════════════════════════ */
-function getREProperties(){try{return JSON.parse(localStorage.getItem('RE_PROPERTIES')||'[]');}catch(e){return[];}}
-function saveREProperties(arr){localStorage.setItem('RE_PROPERTIES',JSON.stringify(arr));}
-function renderRealEstate(){
-  sfxWhoosh();
-  var props=getREProperties();
-  var totalVal=props.reduce(function(s,p){return s+parseFloat(p.value||0);},0);
-  var totalRent=props.reduce(function(s,p){return s+parseFloat(p.rent||0);},0);
-  var html='<div class="gcontent"><div class="g-title">Real Estate</div><div class="g-sub">Manage your property portfolio.</div>';
-  if(props.length){
-    html+='<div class="stat-grid" style="margin-bottom:14px">';
-    html+='<div class="stat-card"><div class="stat-lbl">Portfolio Value</div><div class="stat-val" style="color:var(--accent2)">$'+totalVal.toLocaleString()+'</div></div>';
-    html+='<div class="stat-card"><div class="stat-lbl">Monthly Income</div><div class="stat-val">$'+totalRent.toLocaleString()+'</div></div>';
-    html+='<div class="stat-card"><div class="stat-lbl">Properties</div><div class="stat-val">'+props.length+'</div></div>';
-    html+='</div>';
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px">';
-    props.forEach(function(p,i){
-      html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px">';
-      html+='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
-      html+='<div><div style="font-size:13px;color:var(--text)">'+p.address+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+p.type+'</div></div>';
-      html+='<button onclick="reDelete('+i+')" style="background:none;border:none;color:var(--accent3);cursor:pointer;font-size:10px">✕</button>';
-      html+='</div>';
-      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">';
-      html+='<div><div style="color:var(--text3)">Value</div><div style="color:var(--accent2)">$'+parseFloat(p.value||0).toLocaleString()+'</div></div>';
-      html+='<div><div style="color:var(--text3)">Rent/mo</div><div style="color:var(--text)">$'+parseFloat(p.rent||0).toLocaleString()+'</div></div>';
-      if(p.tenants)html+='<div style="grid-column:span 2"><div style="color:var(--text3)">Tenant</div><div style="color:var(--text)">'+p.tenants+'</div></div>';
-      html+='</div></div>';
-    });
-    html+='</div>';
-  }
-  /* Add property form */
-  html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">';
-  html+='<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:12px">+ ADD PROPERTY</div>';
-  html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">';
-  html+='<div><label style="font-size:10px;color:var(--text3)">ADDRESS</label><input id="re-addr" class="tms-input" placeholder="123 Main St" style="margin-top:4px"></div>';
-  html+='<div><label style="font-size:10px;color:var(--text3)">TYPE</label><select id="re-type" class="tms-select" style="margin-top:4px"><option>Residential</option><option>Commercial</option><option>Condo</option><option>Land</option><option>Multi-Unit</option></select></div>';
-  html+='<div><label style="font-size:10px;color:var(--text3)">VALUE ($)</label><input id="re-val" class="tms-input" type="number" placeholder="500000" style="margin-top:4px"></div>';
-  html+='<div><label style="font-size:10px;color:var(--text3)">MONTHLY RENT ($)</label><input id="re-rent" class="tms-input" type="number" placeholder="2000" style="margin-top:4px"></div>';
-  html+='</div>';
-  html+='<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--text3)">TENANT NAME (optional)</label><input id="re-tenant" class="tms-input" placeholder="Tenant name" style="margin-top:4px;width:100%"></div>';
-  html+='<button class="tms-btn primary" onclick="reAdd()" style="margin-right:8px">Add Property</button>';
-  html+='</div>';
-  /* AI Analysis */
-  html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px">';
-  html+='<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:10px">AI INVESTMENT ANALYSIS</div>';
-  html+='<textarea id="re-analysis-inp" placeholder="Paste property listing, address, or market data for AI analysis…" style="width:100%;background:var(--surface);border:0.5px solid var(--border);border-radius:8px;color:var(--text);font-family:Helvetica,Arial,sans-serif;font-size:13px;padding:10px;resize:none;height:60px;outline:none;margin-bottom:10px"></textarea>';
-  html+='<button class="trans-go-btn" onclick="reAnalyse()">Analyse →</button>';
-  html+='<div id="re-result" style="margin-top:10px"></div>';
-  html+='</div></div>';
-  document.getElementById('content').innerHTML=html;
-}
-function reAdd(){
-  var addr=(document.getElementById('re-addr').value||'').trim();
-  var type=document.getElementById('re-type').value;
-  var value=(document.getElementById('re-val').value||0);
-  var rent=(document.getElementById('re-rent').value||0);
-  var tenants=(document.getElementById('re-tenant').value||'').trim();
-  if(!addr){sfxError();toast('Enter property address');return;}
-  var props=getREProperties();props.push({address:addr,type:type,value:parseFloat(value),rent:parseFloat(rent),tenants:tenants,date:Date.now()});
-  saveREProperties(props);sfxSuccess();toast('Property added');renderRealEstate();
-}
-function reDelete(i){var p=getREProperties();p.splice(i,1);saveREProperties(p);sfxPop();toast('Property removed');renderRealEstate();}
-async function reAnalyse(){
-  var inp=(document.getElementById('re-analysis-inp').value||'').trim();
-  var res=document.getElementById('re-result');
-  if(!inp||!res){sfxError();toast('Enter property data to analyse');return;}
-  res.innerHTML='<div style="font-size:12px;color:var(--text3)"><div class="td"></div> Analysing…</div>';
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:'You are a real estate investment advisor. Analyse this property and provide: investment potential, estimated ROI, market risks, cap rate estimate, and your recommendation. Be concise.\n\n'+inp}]})});
-    if(!r.ok){res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error.</div>';return;}
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'Could not analyse.';
-    res.innerHTML='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.7">'+text+'</div>';
-    sfxReceive();
-  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-}
-
-/* ════════════════════════════════════════
-   FOOD — Vision to Reality
-   ════════════════════════════════════════ */
-function renderFood(){
-  renderProductStudio({
-    key:'food',
-    title:'Food Business Studio',
-    icon:'🍽️',
-    placeholder:'e.g. A premium ghost kitchen serving Korean-Mexican fusion tacos targeting downtown lunch crowds…',
-    designPrompt:'You are a world-class restaurant consultant and food brand strategist. Generate a complete food business concept including: brand name, cuisine style, target market, flagship menu (5 items with descriptions), pricing strategy, and one unique positioning statement. Format as clean paragraphs.',
-    sourcingPrompt:'You are a food supply chain and ingredient sourcing expert.',
-    assemblyPrompt:'You are a restaurant operations and kitchen setup consultant. Provide kitchen equipment list, staffing model, and facility requirements.',
-    scmPrompt:'You are a food logistics and distribution strategist.'
-  });
-}
-
-/* ════════════════════════════════════════
-   FITNESS — Training + Brand Studio
-   ════════════════════════════════════════ */
-function getFitnessLog(){try{return JSON.parse(localStorage.getItem('FITNESS_LOG')||'[]');}catch(e){return[];}}
-function saveFitnessLog(arr){localStorage.setItem('FITNESS_LOG',JSON.stringify(arr));}
-function renderFitness(){
-  sfxWhoosh();
-  var tabs=['Program','Tracker','Business'];
-  var html='<div class="gcontent"><div class="g-title">Fitness</div><div class="g-sub">Training programs, workout tracking, and fitness brand building.</div>';
-  html+='<div style="display:flex;gap:6px;margin-bottom:16px" id="fit-tabs">';
-  tabs.forEach(function(t,i){html+='<button class="tms-tab'+(i===0?' active':'')+'" onclick="fitTab(\''+t+'\')" data-tab="'+t+'">'+t+'</button>';});
-  html+='</div><div id="fit-body"></div></div>';
-  document.getElementById('content').innerHTML=html;
-  fitTab('Program');
-}
-function fitTab(tab){
-  document.querySelectorAll('#fit-tabs .tms-tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===tab);});
-  var body=document.getElementById('fit-body');if(!body)return;
-  if(tab==='Program')fitProgram(body);
-  else if(tab==='Tracker')fitTracker(body);
-  else fitBusiness(body);
-}
-function fitProgram(body){
-  body.innerHTML=
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">'+
-  '<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:12px">GENERATE TRAINING PROGRAM</div>'+
-  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'+
-  '<div><label style="font-size:10px;color:var(--text3)">GOAL</label><select id="fit-goal" class="tms-select" style="margin-top:4px"><option>Strength</option><option>Weight Loss</option><option>Endurance</option><option>Muscle Gain</option><option>Athletic Performance</option></select></div>'+
-  '<div><label style="font-size:10px;color:var(--text3)">DAYS / WEEK</label><select id="fit-days" class="tms-select" style="margin-top:4px"><option>3</option><option>4</option><option>5</option><option>6</option></select></div>'+
-  '</div>'+
-  '<div style="margin-bottom:10px"><label style="font-size:10px;color:var(--text3)">EQUIPMENT AVAILABLE</label><input id="fit-equip" class="tms-input" placeholder="e.g. Full gym, barbells, cables" style="margin-top:4px;width:100%"></div>'+
-  '<button class="trans-go-btn" onclick="fitGenerate()">Generate Program →</button>'+
-  '<div id="fit-program-result" style="margin-top:10px"></div>'+
-  '</div>';
-}
-async function fitGenerate(){
-  var goal=document.getElementById('fit-goal').value;
-  var days=document.getElementById('fit-days').value;
-  var equip=(document.getElementById('fit-equip').value||'Full gym').trim();
-  var res=document.getElementById('fit-program-result');
-  if(!res)return;
-  res.innerHTML='<div style="font-size:12px;color:var(--text3)"><div class="td"></div> Building program…</div>';
-  try{
-    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:'Create a complete '+days+'-day/week training program for the goal: '+goal+'. Equipment: '+equip+'. Include a weekly schedule, exercises per day with sets/reps/rest, and key tips. Format clearly.'}]})});
-    if(!r.ok){res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error.</div>';return;}
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'Could not generate.';
-    res.innerHTML='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.7">'+text+'</div>';
-    sfxReceive();
-  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
-}
-function fitTracker(body){
-  var log=getFitnessLog();
-  body.innerHTML=
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">'+
-  '<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:12px">LOG WORKOUT</div>'+
-  '<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:10px">'+
-  '<div><label style="font-size:10px;color:var(--text3)">EXERCISE</label><input id="fit-ex" class="tms-input" placeholder="Bench Press" style="margin-top:4px"></div>'+
-  '<div><label style="font-size:10px;color:var(--text3)">SETS</label><input id="fit-sets" class="tms-input" type="number" placeholder="4" style="margin-top:4px"></div>'+
-  '<div><label style="font-size:10px;color:var(--text3)">REPS</label><input id="fit-reps" class="tms-input" type="number" placeholder="8" style="margin-top:4px"></div>'+
-  '<div><label style="font-size:10px;color:var(--text3)">WEIGHT (kg)</label><input id="fit-wt" class="tms-input" type="number" placeholder="80" style="margin-top:4px"></div>'+
-  '</div>'+
-  '<button class="tms-btn primary" onclick="fitLogEntry()">Log Set</button>'+
-  '</div>'+
-  (log.length?'<div style="font-size:11px;color:var(--text3);letter-spacing:0.06em;margin-bottom:8px">RECENT SESSIONS</div>'+
-  '<div style="overflow-x:auto"><table class="tms-table"><thead><tr><th class="tms-th">Date</th><th class="tms-th">Exercise</th><th class="tms-th">Sets</th><th class="tms-th">Reps</th><th class="tms-th">Weight</th></tr></thead><tbody>'+
-  log.slice().reverse().slice(0,20).map(function(e){return'<tr class="tms-tr"><td class="tms-td" style="font-size:10px;color:var(--text3)">'+new Date(e.date).toLocaleDateString()+'</td><td class="tms-td">'+e.exercise+'</td><td class="tms-td">'+e.sets+'</td><td class="tms-td">'+e.reps+'</td><td class="tms-td">'+e.weight+' kg</td></tr>';}).join('')+
-  '</tbody></table></div>':'<div style="font-size:12px;color:var(--text3)">No workouts logged yet.</div>');
-}
-function fitLogEntry(){
-  var ex=(document.getElementById('fit-ex').value||'').trim();
-  var sets=parseInt(document.getElementById('fit-sets').value)||0;
-  var reps=parseInt(document.getElementById('fit-reps').value)||0;
-  var wt=parseFloat(document.getElementById('fit-wt').value)||0;
-  if(!ex){sfxError();toast('Enter exercise name');return;}
-  var log=getFitnessLog();log.push({exercise:ex,sets:sets,reps:reps,weight:wt,date:Date.now()});
-  saveFitnessLog(log);sfxSuccess();toast('Logged · '+ex);fitTracker(document.getElementById('fit-body'));
-}
-function fitBusiness(body){
-  renderProductStudio({
-    key:'fitness',
-    title:'Fitness Brand Studio',
-    icon:'💪',
-    placeholder:'e.g. A premium athleisure brand targeting high-performance athletes aged 20-35 with minimalist black and white design…',
-    designPrompt:'You are a fitness brand strategist and product designer. Generate a complete fitness brand concept including: brand identity, product line (3-5 items with specs), target demographic, brand voice, and key differentiator.',
-    sourcingPrompt:'You are a fitness apparel and equipment supply chain expert.',
-    assemblyPrompt:'You are a fitness product manufacturing consultant.',
-    scmPrompt:'You are a fitness brand logistics and DTC distribution strategist.'
-  });
-}
-
-/* ════════════════════════════════════════
-   PLACEHOLDERS
-   ════════════════════════════════════════ */
-function renderPlaceholder(name,key){
-  var icons={entertainment:'🎮',supplychain:'🚛',valuefleet:'🔩',tech:'⚙️',trading:'📈',realestate:'🏠',clothes:'👗',food:'🍽️',fitness:'💪'};
-  var ic=icons[key]||'◎';
-  var descs={
-    entertainment:'Casino, music, games, movies and reading — all in one place.',
-    supplychain:'Full TMS — loads, dispatch, fleet, drivers, customs and logistics.',
-    valuefleet:'Parts sourcing, expense tracking, and payments for your fleet.',
-    tech:'Manage your watch, car and computer from one place.',
-    trading:'Stock trading and commodity trading dashboard.',
-    realestate:'Browse and manage your properties.',
-    clothes:"Men's and women's clothing inventory and management.",
-    food:'Select food type, view menu, manage orders.',
-    fitness:'Gym tracking, workout plans and progress dashboard.'
-  };
-  document.getElementById('content').innerHTML=
-  '<div class="ph-wrap">'+
-  '<div class="ph-ic" style="width:80px;height:80px;border-radius:50%;background:rgba(224,123,32,0.07);border:0.5px solid rgba(224,123,32,0.15);display:flex;align-items:center;justify-content:center;animation:orbPulse 3s ease-in-out infinite">'+ic+'</div>'+
-  '<div class="ph-title">'+name+'</div>'+
-  '<div style="font-size:13px;color:var(--text3);max-width:300px;text-align:center;line-height:1.8;">'+(descs[key]||'Coming soon.')+'</div>'+
-  '<button class="ph-btn" onclick="var r=this.getBoundingClientRect();burstAt(r.left+r.width/2,r.top+r.height/2,18,\'123,108,255\');sendPrompt(\'Tell me more about the '+name+' module for toi.ai\')">Ask rono.v1 ↗</button>'+
-  '</div>';
-}
-
 /* ════════════════════════════════════════
    ADMIN — User Management
    ════════════════════════════════════════ */
-var ALL_PERSONAL=['memories','translate','health','finances','permits','legal'];
-var ALL_BUSINESS=['software','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','clothes','food','fitness','bizlegal'];
-var MOD_LABELS={memories:'Memories',translate:'Translate',health:'Health',finances:'Finances',permits:'Permits',legal:'Legal',software:'Software',entertainment:'Entertainment',supplychain:'Supply Chain',valuefleet:'Value Fleet',tech:'Tech',trading:'Trading',realestate:'Real Estate',bizfinance:'Finance',clothes:'Clothes',food:'Food',fitness:'Fitness',bizlegal:'Legal (Biz)'};
+var ALL_BUSINESS=['supplychain','bizfinance','bizoverview','bizlegal'];
+var MOD_LABELS={supplychain:'Supply Chain',bizfinance:'Finance',bizoverview:'Overview',bizlegal:'Legal (Biz)'};
 
 function saveUsers(){localStorage.setItem('TOI_USERS',JSON.stringify(TOI_USERS));fetch('/api/blob-store?key=users',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({_seedV:_USER_SEED_V,users:TOI_USERS})}).catch(function(){});}
 
@@ -4982,23 +3023,18 @@ function adminRenderUsers(){
   var total=TOI_USERS.length;
   var admins=TOI_USERS.filter(function(u){return u.role==='admin'||u.role==='superadmin';}).length;
   var clients=TOI_USERS.filter(function(u){return u.role==='client';}).length;
-  var allP=['memories','translate','health','finances','permits','legal'];
-  var allB=['software','codestudio','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','clothes','food','fitness','bizlegal'];
+  var allB=['supplychain','bizfinance','bizoverview','bizlegal'];
   var userCards=TOI_USERS.map(function(u){
     var roleColor=RC[u.role]||'#f5d0a0';
     var roleLabel=RL[u.role]||u.role;
     var canDelete=isSuper||(u.role!=='superadmin');
     var bMods=(u.access&&u.access.business)||[];
-    var pMods=(u.access&&u.access.personal)||[];
     var hasAll=u.access&&u.access.all;
-    var chat=u.access&&u.access.chat;
     var modLine;
     if(hasAll){
       modLine='<span style="color:var(--accent2);font-size:10px">✓ All modules</span>';
     }else{
       var labels=[];
-      if(chat)labels.push('Chat');
-      pMods.forEach(function(k){labels.push(MOD_LABELS[k]||k);});
       bMods.forEach(function(k){labels.push(MOD_LABELS[k]||k);});
       var shown=labels.slice(0,4).join(' · ')+(labels.length>4?' +'+( labels.length-4):'');
       modLine='<span style="color:var(--text3);font-size:10px">'+(shown||'No modules')+' </span>';
@@ -5026,7 +3062,6 @@ function adminRenderUsers(){
     '<div style="padding:8px 10px;background:rgba(255,255,255,0.02);border-radius:7px;border:0.5px solid var(--border)">'+modLine+'</div>'+
     '</div>';
   }).join('');
-  var pBoxes=allP.map(function(k){return'<label class="adm-mod-check"><input type="checkbox" class="adm-cb-personal" value="'+k+'"> '+(MOD_LABELS[k]||k)+'</label>';}).join('');
   var bBoxes=allB.map(function(k){return'<label class="adm-mod-check"><input type="checkbox" class="adm-cb-business" value="'+k+'"> '+(MOD_LABELS[k]||k)+'</label>';}).join('');
   var body=document.getElementById('adm-body');if(!body)return;
   body.innerHTML=
@@ -5055,9 +3090,7 @@ function adminRenderUsers(){
   '<option value="superadmin">Super Admin — Full access + user management</option>'+
   '</select></div>'+
   '<div id="adm-mod-sel">'+
-  '<div class="adm-section-lbl">Chat</div><div class="adm-modules"><label class="adm-mod-check"><input type="checkbox" id="adm-chat"> Chat module</label></div>'+
-  '<div class="adm-section-lbl">Personal</div><div class="adm-modules">'+pBoxes+'</div>'+
-  '<div class="adm-section-lbl">Business</div><div class="adm-modules">'+bBoxes+'</div></div>'+
+  '<div class="adm-section-lbl">Business Modules</div><div class="adm-modules">'+bBoxes+'</div></div>'+
   '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'+
   '<button class="adm-btn primary" onclick="adminAddUser()">Create User</button>'+
   '<button class="adm-btn" onclick="adminSelectAll()">All Access</button>'+
@@ -5085,7 +3118,7 @@ function adminRenderUsers(){
 }
 function adminRenderPayments(){
   var sc=getStripeConfig();
-  var stripeOk=sc.publishableKey&&(sc.personalBtnId||sc.personalLink)&&(sc.businessBtnId||sc.businessLink);
+  var stripeOk=sc.publishableKey&&(sc.businessBtnId||sc.businessLink);
   var body=document.getElementById('adm-body');if(!body)return;
   body.innerHTML=
   '<div style="max-width:620px">'+
@@ -5098,16 +3131,13 @@ function adminRenderPayments(){
   '<div class="adm-form-title">API Keys</div>'+
   '<div style="margin-bottom:14px"><label class="adm-label">Publishable Key (pk_live_… or pk_test_…)</label>'+
   '<input class="adm-input" id="stripe-pub-key" placeholder="pk_live_…" value="'+(sc.publishableKey||'')+'" style="font-family:monospace;font-size:11px"></div>'+
-  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
-  '<div><label class="adm-label">Personal Buy Button ID</label><input class="adm-input" id="stripe-personal-id" placeholder="buy_btn_…" value="'+(sc.personalBtnId||'')+'" style="font-family:monospace;font-size:11px"></div>'+
-  '<div><label class="adm-label">Business Buy Button ID</label><input class="adm-input" id="stripe-business-id" placeholder="buy_btn_…" value="'+(sc.businessBtnId||'')+'" style="font-family:monospace;font-size:11px"></div>'+
+  '<div style="margin-bottom:12px">'+
+  '<label class="adm-label">Business Buy Button ID</label><input class="adm-input" id="stripe-business-id" placeholder="buy_btn_…" value="'+(sc.businessBtnId||'')+'" style="font-family:monospace;font-size:11px">'+
   '</div></div>'+
   '<div class="adm-form" style="margin-bottom:20px">'+
-  '<div class="adm-form-title">Fallback Payment Links</div>'+
-  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
-  '<div><label class="adm-label">Personal</label><input class="adm-input" id="stripe-personal-link" placeholder="https://buy.stripe.com/…" value="'+(sc.personalLink||'')+'" style="font-family:monospace;font-size:11px"></div>'+
+  '<div class="adm-form-title">Fallback Payment Link</div>'+
   '<div><label class="adm-label">Business</label><input class="adm-input" id="stripe-business-link" placeholder="https://buy.stripe.com/…" value="'+(sc.businessLink||'')+'" style="font-family:monospace;font-size:11px"></div>'+
-  '</div></div>'+
+  '</div>'+
   '<button class="adm-btn primary" onclick="adminSaveStripe()">Save & Apply</button>'+
   '</div>';
 }
@@ -5160,11 +3190,9 @@ function adminSaveAPIKeys(){
 }
 function adminSaveStripe(){
   var pubKey=((document.getElementById('stripe-pub-key')||{}).value||'').trim();
-  var personalId=((document.getElementById('stripe-personal-id')||{}).value||'').trim();
   var businessId=((document.getElementById('stripe-business-id')||{}).value||'').trim();
-  var personalLink=((document.getElementById('stripe-personal-link')||{}).value||'').trim();
   var businessLink=((document.getElementById('stripe-business-link')||{}).value||'').trim();
-  saveStripeConfig({publishableKey:pubKey,personalBtnId:personalId,businessBtnId:businessId,personalLink:personalLink,businessLink:businessLink});
+  saveStripeConfig({publishableKey:pubKey,businessBtnId:businessId,businessLink:businessLink});
   sfxSuccess();toast('Payment config saved');_adminTab='payments';renderAdmin();
 }
 function adminShowAdd(){
@@ -5183,12 +3211,10 @@ function adminAddUser(){
   if(name)name=name.trim();if(pw)pw=pw.trim();
   if(!name||!pw){sfxError();toast('Enter name and passkey');return;}
   if(TOI_USERS.find(function(u){return u.password===pw;})){sfxError();toast('Passkey already in use');return;}
-  var personal=[].slice.call(document.querySelectorAll('.adm-cb-personal:checked')).map(function(c){return c.value;});
   var business=[].slice.call(document.querySelectorAll('.adm-cb-business:checked')).map(function(c){return c.value;});
-  var chat=document.getElementById('adm-chat')&&document.getElementById('adm-chat').checked;
   var email=((document.getElementById('adm-email')||{}).value||'').trim();
   var allAccess=(role==='admin'||role==='superadmin'||role==='client-partner');
-  var user={id:'u_'+Date.now(),name:name,password:pw,role:role,preferredEmail:email||null,access:{all:allAccess,chat:chat||allAccess,personal:allAccess?['memories','translate','health','finances','permits','legal']:personal,business:allAccess?['software','codestudio','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','bizoverview','clothes','food','fitness','bizlegal']:business}};
+  var user={id:'u_'+Date.now(),name:name,password:pw,role:role,preferredEmail:email||null,access:{all:allAccess,business:allAccess?['supplychain','bizfinance','bizoverview','bizlegal']:business}};
   TOI_USERS.push(user);
   saveUsers();
   sfxSuccess();toast('User created · '+name);burstAt(canvas.width/2,canvas.height/2,20,'123,108,255');
@@ -5201,20 +3227,16 @@ function adminDeleteUser(id){
   saveUsers();sfxPop();toast('User removed');renderAdmin();
 }
 function adminSelectAll(){
-  document.querySelectorAll('.adm-cb-personal,.adm-cb-business').forEach(function(c){c.checked=true;});
-  if(document.getElementById('adm-chat'))document.getElementById('adm-chat').checked=true;
+  document.querySelectorAll('.adm-cb-business').forEach(function(c){c.checked=true;});
 }
 function adminClearAll(){
-  document.querySelectorAll('.adm-cb-personal,.adm-cb-business').forEach(function(c){c.checked=false;});
-  if(document.getElementById('adm-chat'))document.getElementById('adm-chat').checked=false;
+  document.querySelectorAll('.adm-cb-business').forEach(function(c){c.checked=false;});
 }
 function adminEditUser(id){
   var u=TOI_USERS.find(function(x){return x.id===id;});
   if(!u)return;
-  var allP=['memories','translate','health','finances','permits','legal'];
-  var allB=['software','codestudio','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','clothes','food','fitness','bizlegal'];
-  var pChecked=u.access.personal||[];var bChecked=u.access.business||[];
-  var pBoxes=allP.map(function(k){return'<label class="adm-mod-check"><input type="checkbox" class="edit-cb-p" value="'+k+'"'+(pChecked.indexOf(k)!==-1?' checked':'')+'> '+(MOD_LABELS[k]||k)+'</label>';}).join('');
+  var allB=['supplychain','bizfinance','bizoverview','bizlegal'];
+  var bChecked=u.access.business||[];
   var bBoxes=allB.map(function(k){return'<label class="adm-mod-check"><input type="checkbox" class="edit-cb-b" value="'+k+'"'+(bChecked.indexOf(k)!==-1?' checked':'')+'> '+(MOD_LABELS[k]||k)+'</label>';}).join('');
   var roleOpts=['client','client-partner','admin','superadmin'].map(function(r){return'<option value="'+r+'"'+(r===u.role?' selected':'')+'>'+{'client':'Client / Employee','client-partner':'Client Partner — Full access, no user management','admin':'Admin','superadmin':'Super Admin'}[r]+'</option>';}).join('');
   var isSuper=currentUser&&currentUser.role==='superadmin';
@@ -5236,9 +3258,7 @@ function adminEditUser(id){
   '<div><label class="adm-label">2FA</label><label style="display:flex;align-items:center;gap:6px;cursor:pointer;height:32px"><input type="checkbox" id="edit-twofa"'+(u.twoFA?' checked':'')+' style="accent-color:var(--accent);width:14px;height:14px"><span style="font-size:11px;color:var(--text3)">Enable</span></label></div>'+
   '</div>'+
   (isSuper||u.role!=='superadmin'?'<div style="margin:12px 0"><label class="adm-label">Role</label><select class="adm-input" id="edit-role">'+roleOpts+'</select></div>':'')+
-  '<div class="adm-section-lbl">Chat</div><div class="adm-modules"><label class="adm-mod-check"><input type="checkbox" id="edit-chat"'+(u.access.chat?' checked':'')+'> Chat module</label></div>'+
-  '<div class="adm-section-lbl">Personal</div><div class="adm-modules">'+pBoxes+'</div>'+
-  '<div class="adm-section-lbl">Business</div><div class="adm-modules">'+bBoxes+'</div>'+
+  '<div class="adm-section-lbl">Business Modules</div><div class="adm-modules">'+bBoxes+'</div>'+
   '<div style="display:flex;gap:10px;margin-top:16px">'+
   '<button class="adm-btn primary" onclick="adminSaveEdit(\''+id+'\')">Save Changes</button>'+
   '<button class="adm-btn" onclick="document.getElementById(\'adm-edit-panel\').remove()">Cancel</button>'+
@@ -5257,15 +3277,13 @@ function adminSaveEdit(id){
   /* Check passkey uniqueness (excluding self) */
   if(TOI_USERS.find(function(x){return x.id!==id&&x.password===pw;})){sfxError();toast('Passkey already used by another user');return;}
   var role=(document.getElementById('edit-role')||{}).value||u.role;
-  var chat=document.getElementById('edit-chat')&&document.getElementById('edit-chat').checked;
-  var personal=[].slice.call(document.querySelectorAll('.edit-cb-p:checked')).map(function(c){return c.value;});
   var business=[].slice.call(document.querySelectorAll('.edit-cb-b:checked')).map(function(c){return c.value;});
   var email=((document.getElementById('edit-email')||{}).value||'').trim();
   var phone=((document.getElementById('edit-phone')||{}).value||'').trim();
   var twoFA=!!(document.getElementById('edit-twofa')&&document.getElementById('edit-twofa').checked);
   var allAccess=(role==='admin'||role==='superadmin'||role==='client-partner');
   u.name=name;u.password=pw;u.role=role;u.preferredEmail=email||null;u.phone=phone||null;u.twoFA=twoFA&&!!phone;
-  u.access={all:allAccess,chat:chat||allAccess,personal:allAccess?['memories','translate','health','finances','permits','legal']:personal,business:allAccess?['software','codestudio','entertainment','supplychain','valuefleet','tech','trading','realestate','bizfinance','bizoverview','clothes','food','fitness','bizlegal']:business};
+  u.access={all:allAccess,business:allAccess?['supplychain','bizfinance','bizoverview','bizlegal']:business};
   saveUsers();
   sfxSuccess();toast('User updated · '+name);
   renderAdmin();
@@ -5303,25 +3321,7 @@ function renderSupplyChain(){
   tmsGroup('dashboard');
 }
 
-function renderValueFleet(){
-  sfxWhoosh();
-  var D=window.TMS_DATA;
-  if(!D.partsRequests)D.partsRequests=[];
-  if(!D.clientInvoices)D.clientInvoices=[];
-  var tab=window._vfAdminTab||'partsreqs';
-  var tabs=[['partsreqs','Parts Requests'],['invoices','Invoices']];
-  var tabBar=tabs.map(function(t){
-    var on=tab===t[0];
-    return '<button class="tms-tab'+(on?' active':'')+'" onclick="window._vfAdminTab=\''+t[0]+'\';renderValueFleet()">'+t[1]+'</button>';
-  }).join('');
-  document.getElementById('content').innerHTML=
-    '<div class="tms-wrap">'+
-    '<div class="tms-topbar" id="vf-admintabs">'+tabBar+'</div>'+
-    '<div id="tms-body" class="tms-body"></div>'+
-    '</div>';
-  if(tab==='partsreqs')tmsPartsRequests();
-  else tmsInvoices();
-}
+
 function tmsGroup(g){
   _tmsActiveGroup=g;
   document.querySelectorAll('#tms-grouptabs .tms-tab').forEach(function(t){t.classList.toggle('active',t.dataset.group===g);});
@@ -9256,7 +7256,7 @@ function tmsMarkDriverPaid(driverId){
   sfxSuccess();toast('Marked paid · '+d.name+' · $'+paid.toLocaleString(undefined,{maximumFractionDigits:0}));
   tmsDriverPay();
 }
-function sendPrompt(txt){openMod('chat');setTimeout(function(){suggest(txt);},600);}
+function sendPrompt(txt){openMod('business');}
 
 /* ════════════════════════════════════════
    TMS — CARRIER ONBOARDING
@@ -10651,18 +8651,13 @@ function renderBizOverview(){
   var D=window.TMS_DATA||{loads:[],drivers:[],finances:{revenue:0,expenses:0,payroll:0}};
   var tmsTxns=[];try{tmsTxns=JSON.parse(localStorage.getItem('TMS_TXN')||'[]');}catch(e){}
   var bizTxns=[];try{bizTxns=JSON.parse(localStorage.getItem('BIZ_FINANCE_TXN')||'[]');}catch(e){}
-  var finTxns=[];try{finTxns=JSON.parse(localStorage.getItem('FINANCE_TXN')||'[]');}catch(e){}
-  var reProps=[];try{reProps=JSON.parse(localStorage.getItem('RE_PROPERTIES')||'[]');}catch(e){}
   /* Aggregates */
   var tmsRev=D.finances.revenue||0;
   var tmsExp=(D.finances.expenses||0)+(D.finances.payroll||0);
   var bizIncome=bizTxns.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+parseFloat(t.amount||0);},0);
   var bizExpenses=bizTxns.filter(function(t){return t.type!=='income';}).reduce(function(s,t){return s+Math.abs(parseFloat(t.amount||0));},0);
-  var personalIncome=finTxns.filter(function(t){return(t.category||'').toLowerCase()==='income';}).reduce(function(s,t){return s+parseFloat(t.amount||0);},0);
-  var personalExpenses=finTxns.filter(function(t){return(t.category||'').toLowerCase()!=='income';}).reduce(function(s,t){return s+Math.abs(parseFloat(t.amount||0));},0);
-  var reIncome=reProps.reduce(function(s,p){return s+parseFloat(p.rent||0)*12;},0);
-  var totalIncome=tmsRev+bizIncome+personalIncome+reIncome;
-  var totalExpenses=tmsExp+bizExpenses+personalExpenses;
+  var totalIncome=tmsRev+bizIncome;
+  var totalExpenses=tmsExp+bizExpenses;
   var net=totalIncome-totalExpenses;
   /* Completed loads */
   var completedLoads=D.loads.filter(function(l){return l.status==='Delivered';}).length;
@@ -10672,8 +8667,7 @@ function renderBizOverview(){
   /* Recent transactions (last 8 across all modules) */
   var allTxns=[].concat(
     bizTxns.slice(-5).map(function(t){return{date:t.date,desc:t.description,amt:parseFloat(t.amount||0),source:'Business Finance'};}),
-    tmsTxns.slice(-5).map(function(t){return{date:t.date,desc:t.memo||t.description,amt:parseFloat(t.amount||0),source:'TMS Finances'};}),
-    finTxns.slice(-3).map(function(t){return{date:t.date,desc:t.description,amt:parseFloat(t.amount||0),source:'Personal Finance'};})
+    tmsTxns.slice(-5).map(function(t){return{date:t.date,desc:t.memo||t.description,amt:parseFloat(t.amount||0),source:'TMS Finances'};})
   ).sort(function(a,b){return new Date(b.date)-new Date(a.date);}).slice(0,10);
   var ca=document.getElementById('content');
   var kpiCard=function(label,val,color){return '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:16px 20px;text-align:center"><div style="font-size:9px;color:var(--text3);letter-spacing:0.13em;margin-bottom:6px">'+label+'</div><div style="font-size:22px;font-weight:300;color:'+(color||'var(--text)')+'">'+val+'</div></div>';};
@@ -10689,13 +8683,12 @@ function renderBizOverview(){
   kpiCard('ACTIVE LOADS',activeLoads,'var(--text)')+
   kpiCard('COMPLETED LOADS',completedLoads,'var(--accent2)')+
   kpiCard('DRIVER EARNINGS','$'+totalDriverEarnings.toLocaleString(undefined,{maximumFractionDigits:0}),'var(--text3)')+
-  kpiCard('RE ANNUAL','$'+reIncome.toLocaleString(undefined,{maximumFractionDigits:0}),'var(--accent)')+
   '</div>'+
   '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'+
   /* Module breakdown */
   '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:16px">'+
   '<div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;margin-bottom:12px">REVENUE BY MODULE</div>'+
-  [['Supply Chain / TMS',tmsRev],['Business Finance',bizIncome],['Real Estate',reIncome],['Personal',personalIncome]].map(function(row){
+  [['Supply Chain / TMS',tmsRev],['Business Finance',bizIncome]].map(function(row){
     var pct=totalIncome>0?Math.round(row[1]/totalIncome*100):0;
     return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span style="color:var(--text2)">'+row[0]+'</span><span style="color:var(--accent2)">$'+row[1].toLocaleString(undefined,{maximumFractionDigits:0})+'</span></div>'+
     '<div style="height:4px;background:var(--border);border-radius:4px"><div style="height:4px;background:var(--accent);border-radius:4px;width:'+pct+'%"></div></div></div>';
@@ -10725,273 +8718,6 @@ function renderBizOverview(){
   }).join('')+'</tbody></table></div></div>':'<div style="font-size:12px;color:var(--text3)">No transactions across modules yet. Use the Finance and TMS modules to add data.</div>')+
   '</div>';
 }
-
-/* ════════════════════════════════════════
-   CLOTHES — New Inventory + Visual Studio
-   ════════════════════════════════════════ */
-function renderClothes(){
-  var items=getClothesItems();
-  document.getElementById('content').innerHTML=
-  '<div style="padding:20px;max-width:900px">'+
-  '<div style="font-size:18px;color:var(--text);font-weight:300;margin-bottom:4px">Clothing Studio</div>'+
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:18px">Design · Inventory · Visualize · Source</div>'+
-  '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">'+
-  '<button class="tms-btn active" onclick="clothesTab(\'inventory\',this)">📦 Inventory</button>'+
-  '<button class="tms-btn" onclick="clothesTab(\'design\',this)">✏️ Design</button>'+
-  '<button class="tms-btn" onclick="clothesTab(\'visualize\',this)">🎨 Visualize</button>'+
-  '<button class="tms-btn" onclick="clothesTab(\'source\',this)">🌏 Source</button>'+
-  '</div>'+
-  '<div id="clothes-view"></div>'+
-  '</div>';
-  clothesRenderInventory();
-}
-function getClothesItems(){try{return JSON.parse(localStorage.getItem('CLOTHES_ITEMS')||'[]');}catch(e){return[];}}
-function saveClothesItems(a){localStorage.setItem('CLOTHES_ITEMS',JSON.stringify(a));}
-function clothesTab(tab,btn){
-  document.querySelectorAll('#content .tms-btn').forEach(function(b){b.classList.remove('active');});
-  if(btn)btn.classList.add('active');
-  if(tab==='inventory')clothesRenderInventory();
-  else if(tab==='design')clothesRenderDesign();
-  else if(tab==='visualize')clothesRenderVisualize();
-  else if(tab==='source')clothesRenderSource();
-}
-function clothesRenderInventory(){
-  var items=getClothesItems();
-  var categories=[...new Set(items.map(function(i){return i.category||'General';}))];
-  var catGroups=categories.map(function(cat){
-    var catItems=items.filter(function(i){return(i.category||'General')===cat;});
-    var rows=catItems.map(function(item,globalIdx){
-      var realIdx=items.indexOf(item);
-      var statusColor=item.status==='In Stock'?'green':item.status==='Low Stock'?'yellow':'red';
-      return '<tr class="tms-tr">'+
-      '<td class="tms-td"><strong>'+item.name+'</strong><div style="font-size:9px;color:var(--text3)">'+(item.sku||'')+'</div></td>'+
-      '<td class="tms-td">'+item.category+'</td>'+
-      '<td class="tms-td">'+(item.size||'—')+'</td>'+
-      '<td class="tms-td">'+(item.color||'—')+'</td>'+
-      '<td class="tms-td">'+(item.qty||0)+'</td>'+
-      '<td class="tms-td">'+(item.cost?'$'+item.cost:'—')+'</td>'+
-      '<td class="tms-td"><span class="tms-badge '+statusColor+'">'+(item.status||'In Stock')+'</span></td>'+
-      '<td class="tms-td"><button class="tms-btn sm" onclick="clothesVisualize('+realIdx+')">👁</button> <button class="tms-btn sm" style="color:var(--accent3)" onclick="clothesDelete('+realIdx+')">✕</button></td>'+
-      '</tr>';
-    }).join('');
-    return '<div style="margin-bottom:16px">'+
-    '<div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;padding:6px 0;border-bottom:0.5px solid var(--border)">'+cat+'</div>'+
-    '<div style="overflow-x:auto"><table class="tms-table"><thead><tr>'+
-    '<th class="tms-th">Item</th><th class="tms-th">Category</th><th class="tms-th">Size</th><th class="tms-th">Color</th><th class="tms-th">Qty</th><th class="tms-th">Cost</th><th class="tms-th">Status</th><th class="tms-th">Actions</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  }).join('');
-  var view=document.getElementById('clothes-view');
-  if(!view)return;
-  view.innerHTML=
-  (items.length?catGroups:'<div style="font-size:12px;color:var(--text3);margin-bottom:16px">No items yet. Add your first piece below.</div>')+
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;max-width:640px;margin-top:16px">'+
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:12px;letter-spacing:0.08em">ADD ITEM</div>'+
-  '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:10px">'+
-  '<div><label class="tms-label">Name</label><input class="tms-input" id="cl-name" placeholder="Oversized Blazer"></div>'+
-  '<div><label class="tms-label">Category</label><input class="tms-input" id="cl-cat" placeholder="Outerwear, Tops…"></div>'+
-  '<div><label class="tms-label">SKU</label><input class="tms-input" id="cl-sku" placeholder="BLZ-001"></div>'+
-  '<div><label class="tms-label">Size</label><input class="tms-input" id="cl-size" placeholder="S/M/L/XL"></div>'+
-  '<div><label class="tms-label">Color</label><input class="tms-input" id="cl-color" placeholder="Navy, Black…"></div>'+
-  '<div><label class="tms-label">Qty</label><input class="tms-input" id="cl-qty" type="number" value="1"></div>'+
-  '<div><label class="tms-label">Cost ($)</label><input class="tms-input" id="cl-cost" type="number" placeholder="85"></div>'+
-  '<div><label class="tms-label">Status</label><select class="tms-select" id="cl-status"><option>In Stock</option><option>Low Stock</option><option>Out of Stock</option></select></div>'+
-  '<div class="tms-form-full" style="grid-column:1/-1"><label class="tms-label">Description / Notes</label><input class="tms-input" id="cl-desc" placeholder="Fabric, details, design notes…"></div>'+
-  '</div>'+
-  '<div style="display:flex;gap:8px">'+
-  '<button class="tms-btn primary" onclick="clothesAdd()">Add Item</button>'+
-  '<button class="tms-btn" onclick="clothesAddAndVisualize()">Add + Visualize</button>'+
-  '</div>'+
-  '</div>';
-}
-function clothesAdd(){
-  var name=(document.getElementById('cl-name').value||'').trim();
-  if(!name){sfxError();toast('Enter item name');return;}
-  var items=getClothesItems();
-  items.push({
-    name:name,
-    category:(document.getElementById('cl-cat').value||'General').trim(),
-    sku:(document.getElementById('cl-sku').value||'').trim(),
-    size:(document.getElementById('cl-size').value||'').trim(),
-    color:(document.getElementById('cl-color').value||'').trim(),
-    qty:parseInt(document.getElementById('cl-qty').value)||1,
-    cost:parseFloat(document.getElementById('cl-cost').value)||0,
-    status:document.getElementById('cl-status').value||'In Stock',
-    desc:(document.getElementById('cl-desc').value||'').trim()
-  });
-  saveClothesItems(items);
-  sfxSuccess();toast('Added · '+name);
-  clothesRenderInventory();
-}
-async function clothesAddAndVisualize(){
-  clothesAdd();
-  var items=getClothesItems();
-  clothesVisualize(items.length-1);
-}
-function clothesDelete(idx){
-  var items=getClothesItems();items.splice(idx,1);saveClothesItems(items);sfxPop();clothesRenderInventory();
-}
-async function clothesVisualize(idx){
-  var items=getClothesItems();
-  var item=items[idx];
-  if(!item){sfxError();toast('Item not found');return;}
-  var desc=item.name+(item.color?' in '+item.color:'')+(item.size?', size '+item.size:'')+'. '+(item.desc||'');
-  var view=document.getElementById('clothes-view');
-  if(view)view.innerHTML='<div style="font-size:12px;color:var(--text3)">🎨 Generating visualization for '+item.name+'…</div>';
-  try{
-    var r=await fetch('/api/ai',{
-      method:'POST',
-      headers:{'x-api-key':KEY,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:PROMPTS.design,messages:[{role:'user',content:'Create a fashion visualization for: '+desc}]})
-    });
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'';
-    var visualMatch=text.match(/<VISUAL>([\s\S]*?)<\/VISUAL>/);
-    var visual=visualMatch?visualMatch[1]:text;
-    var rest=text.replace(/<VISUAL>[\s\S]*?<\/VISUAL>/,'').trim();
-    if(view){
-      view.innerHTML=
-      '<button class="tms-btn" onclick="clothesRenderInventory()" style="margin-bottom:12px">← Back to Inventory</button>'+
-      '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px">'+
-      '<div style="font-size:14px;color:var(--text);margin-bottom:8px">'+item.name+'</div>'+
-      visual+
-      '</div>'+
-      (rest?'<div style="font-size:12px;color:var(--text3);margin-top:8px">'+rest+'</div>':'');
-    }
-    sfxSuccess();
-  }catch(err){
-    if(view)view.innerHTML='<div style="color:var(--accent3);font-size:12px">Visualization failed. Try again.</div>';
-  }
-}
-function clothesRenderDesign(){
-  var view=document.getElementById('clothes-view');
-  if(!view)return;
-  view.innerHTML=
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:16px;max-width:700px">'+
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:12px;letter-spacing:0.08em">AI DESIGN GENERATOR</div>'+
-  '<textarea class="tms-input" id="clothes-design-prompt" rows="4" style="width:100%;resize:vertical;margin-bottom:10px" placeholder="Describe your garment concept: type, fabric, color, silhouette, target market, mood…"></textarea>'+
-  '<div style="display:flex;gap:8px">'+
-  '<button class="tms-btn primary" onclick="clothesGenerateDesign()">✏️ Generate Design Concept</button>'+
-  '<button class="tms-btn" onclick="clothesGenerateVisual()">🎨 Generate Visual</button>'+
-  '</div>'+
-  '<div id="clothes-design-result" style="margin-top:14px"></div>'+
-  '</div>';
-}
-async function clothesGenerateDesign(){
-  var prompt=(document.getElementById('clothes-design-prompt').value||'').trim();
-  if(!prompt){sfxError();toast('Describe your garment');return;}
-  var div=document.getElementById('clothes-design-result');
-  if(div)div.innerHTML='<div style="font-size:12px;color:var(--text3)">✏️ Designing…</div>';
-  try{
-    var r=await fetch('/api/ai',{
-      method:'POST',
-      headers:{'x-api-key':KEY,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:'You are a world-class fashion designer. Generate a detailed, production-ready clothing design concept. Include: garment type, silhouette, fabrics, colours, key construction details, target market, and one unique design element. Format as clean paragraphs. Never mention Claude or Anthropic.',messages:[{role:'user',content:prompt}]})
-    });
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'';
-    if(div)div.innerHTML='<div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+text+'</div>';
-    sfxSuccess();
-  }catch(err){if(div)div.innerHTML='<div style="color:var(--accent3);font-size:12px">Error: '+err.message+'</div>';}
-}
-async function clothesGenerateVisual(){
-  var prompt=(document.getElementById('clothes-design-prompt').value||'').trim();
-  if(!prompt){sfxError();toast('Describe your garment');return;}
-  var div=document.getElementById('clothes-design-result');
-  if(div)div.innerHTML='<div style="font-size:12px;color:var(--text3)">🎨 Generating visual…</div>';
-  try{
-    var r=await fetch('/api/ai',{
-      method:'POST',
-      headers:{'x-api-key':KEY,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:PROMPTS.design,messages:[{role:'user',content:'Create a fashion visualization for: '+prompt}]})
-    });
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'';
-    var visualMatch=text.match(/<VISUAL>([\s\S]*?)<\/VISUAL>/);
-    var visual=visualMatch?visualMatch[1]:text;
-    var rest=text.replace(/<VISUAL>[\s\S]*?<\/VISUAL>/,'').trim();
-    if(div){
-      div.innerHTML='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px">'+visual+'</div>'+
-      (rest?'<div style="font-size:12px;color:var(--text3);margin-top:8px">'+rest+'</div>':'');
-    }
-    sfxSuccess();
-  }catch(err){if(div)div.innerHTML='<div style="color:var(--accent3);font-size:12px">Error: '+err.message+'</div>';}
-}
-function clothesRenderVisualize(){
-  var items=getClothesItems();
-  var view=document.getElementById('clothes-view');
-  if(!view)return;
-  if(!items.length){view.innerHTML='<div style="font-size:12px;color:var(--text3)">No items to visualize. Add items in the Inventory tab first.</div>';return;}
-  view.innerHTML=
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:12px">Select an item to generate an AI visualization:</div>'+
-  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">'+
-  items.map(function(item,i){
-    return '<div onclick="clothesVisualize('+i+')" style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.15s" onmouseenter="this.style.borderColor=\'rgba(224,123,32,0.4)\'" onmouseleave="this.style.borderColor=\'var(--border)\'">'+
-    '<div style="font-size:24px;margin-bottom:6px">👗</div>'+
-    '<div style="font-size:12px;color:var(--text);font-weight:500">'+item.name+'</div>'+
-    '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+item.category+(item.color?' · '+item.color:'')+'</div>'+
-    '<div style="margin-top:8px;font-size:10px;color:var(--accent)">Tap to visualize →</div>'+
-    '</div>';
-  }).join('')+
-  '</div>';
-}
-function clothesRenderSource(){
-  var view=document.getElementById('clothes-view');
-  if(!view)return;
-  view.innerHTML=
-  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:16px;max-width:700px">'+
-  '<div style="font-size:11px;color:var(--text3);margin-bottom:12px;letter-spacing:0.08em">AI SOURCING ADVISOR</div>'+
-  '<textarea class="tms-input" id="clothes-source-prompt" rows="3" style="width:100%;resize:vertical;margin-bottom:10px" placeholder="Describe what you need to source: fabric type, quantity, target price, region of production, lead time…"></textarea>'+
-  '<button class="tms-btn primary" onclick="clothesGetSourcing()">🌏 Get Sourcing Options</button>'+
-  '<div id="clothes-source-result" style="margin-top:14px"></div>'+
-  '</div>';
-}
-async function clothesGetSourcing(){
-  var prompt=(document.getElementById('clothes-source-prompt').value||'').trim();
-  if(!prompt){sfxError();toast('Describe your sourcing need');return;}
-  var div=document.getElementById('clothes-source-result');
-  if(div)div.innerHTML='<div style="font-size:12px;color:var(--text3)">🌏 Finding sourcing options…</div>';
-  try{
-    var r=await fetch('/api/ai',{
-      method:'POST',
-      headers:{'x-api-key':KEY,'anthropic-version':'2023-06-01','content-type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,system:'You are a global textile and fashion supply chain expert. Give practical sourcing recommendations including: regions (China, Bangladesh, Portugal, etc.), fabric suppliers, MOQ estimates, lead times, cost ranges, and quality tiers. Be specific and actionable. Never mention Claude or Anthropic.',messages:[{role:'user',content:prompt}]})
-    });
-    var d=await r.json();
-    var text=(d.content&&d.content[0]&&d.content[0].text)||'';
-    if(div)div.innerHTML='<div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+text+'</div>';
-    sfxSuccess();
-  }catch(err){if(div)div.innerHTML='<div style="color:var(--accent3);font-size:12px">Error: '+err.message+'</div>';}
-}
-
-/* ════════════════════════════════════════
-   CODE STUDIO — File Upload
-   ════════════════════════════════════════ */
-function csUploadFiles(input){
-  if(!input.files||!input.files.length)return;
-  var projects=getCSProjects();
-  var proj=projects[_cs.projectIdx];
-  if(!proj){sfxError();toast('Open a project first');return;}
-  var count=0;
-  var readers=[];
-  Array.from(input.files).forEach(function(f){
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var content=e.target.result;
-      var existingIdx=proj.files.findIndex(function(x){return x.name===f.name;});
-      if(existingIdx>=0){proj.files[existingIdx].content=content;}
-      else{proj.files.push({name:f.name,content:content});}
-      count++;
-      if(count===input.files.length){
-        saveCSProjects(projects);
-        sfxSuccess();toast('Uploaded '+count+' file'+(count!==1?'s':''));
-        csRenderIDE();
-      }
-    };
-    reader.readAsText(f);
-  });
-  input.value='';
-}
-
 /* ════════════════════════════════════════
    DISPATCH — Email Driver
    ════════════════════════════════════════ */
@@ -11841,25 +9567,9 @@ var _helpHist=[];
 var _helpTyping=false;
 
 var HELP_SYSTEM='You are the help assistant for PackFast TMS — a single-file, all-in-one platform. Answer questions concisely and clearly. Keep responses under 120 words unless a detailed step-by-step is needed. Use plain language. Here is a complete reference of all features:\n\n'+
-'PERSONAL MODULES:\n'+
-'• Goals — Write and track daily intentions. Toggle done, clear completed, progress bar. Resets each day.\n'+
-'• Memories — Upload photos, AI auto-categorizes into albums (Travel, Food, People, Events, etc.).\n'+
-'• Translate — 14 languages. Type or speak input, hear translation aloud. Voice input via mic button.\n'+
-'• Health — Drop a PDF medical report, AI extracts: Vitals, Labs, Diagnoses, Medications, Recommendations, Red Flags.\n'+
-'• Finances — Import bank CSV or PDF. AI categorizes transactions and generates tax summary.\n'+
-'• Permits — Track licences with expiry dates. Colour-coded status: green=valid, yellow=expiring, red=expired.\n'+
-'• Legal — Personal AI legal advisor. Ask about contracts, tenant rights, employment, family law, etc.\n\n'+
 'BUSINESS MODULES:\n'+
-'• Software Builder — Describe an app, AI generates complete HTML/CSS/JS. Preview or download.\n'+
-'• Code Studio — Multi-file code editor with AI pair programmer. Create projects, edit files, export ZIP.\n'+
-'• Trading — Live stock/ETF prices (SPY, QQQ, DIA, XIU.TO). Add watchlist. WealthSimple portfolio import + AI analysis.\n'+
-'• Real Estate — Property records with AI investment analysis: ROI, cap rate, market risk, recommendation.\n'+
+'• Supply Chain — Full TMS: loads, dispatch, fleet, drivers, customs, invoicing, and more.\n'+
 '• Finance (Biz) — Corporate bank import, GST/HST tracking, corporate tax summary.\n'+
-'• Clothes — Describe garment, AI outputs Design spec + Material sourcing + Assembly options in parallel.\n'+
-'• Food — Turn a food concept into a full product roadmap with sourcing, packaging, distribution.\n'+
-'• Fitness — Generate weekly training programs. Enter goal, duration, equipment.\n'+
-'• Entertainment — Build games and interactive web experiences with AI.\n'+
-'• Tech — Gadget project database. AI generates full hardware spec sheets.\n'+
 '• Legal (Biz) — Corporate law AI: contracts, shareholder agreements, compliance, IP.\n'+
 '• Overview — Birds-eye financial dashboard across all business modules.\n\n'+
 'SUPPLY CHAIN / TMS:\n'+
@@ -11877,9 +9587,6 @@ var HELP_SYSTEM='You are the help assistant for PackFast TMS — a single-file, 
 '• Customer Portal — Clients track shipments by reference#, submit quote requests.\n'+
 '• Driver Portal — Drivers see assigned loads, update status on the road.\n'+
 '• IFTA — Fuel tax by jurisdiction. Upload CSV or manual entry. AI calculates tax owed/credit per quarter.\n\n'+
-'CHAT AI:\n'+
-'• Text chat with the AI for any question. Voice mode: tap mic, speak, AI responds in text AND audio. Typing never triggers audio — only voice mode does.\n'+
-'• OpenAI API key can be set in chat settings for HD voice (onyx model).\n\n'+
 'ADMIN (admin/superadmin only):\n'+
 '• User Management — Add/edit/remove users. Roles: superadmin (all), admin (all), client (limited).\n'+
 '• Integrations — API keys for Samsara (GPS), BorderConnect (customs), CIBC, Scotiabank, WealthSimple.\n\n'+
