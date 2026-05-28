@@ -8645,6 +8645,96 @@ function iftaRenderResult(result){
 }
 
 /* ════════════════════════════════════════
+   BUSINESS LEGAL — Corporate Law AI
+   ════════════════════════════════════════ */
+var _bizLegalHist=[];
+function renderBizLegal(){
+  _bizLegalHist=[];
+  document.getElementById('content').innerHTML=
+  '<div class="chat-wrap">'+
+  '<div class="msgs" id="msgs">'+
+  '<div class="welcome" id="welcome">'+
+  '<div class="w-orb" style="font-size:32px">⚖️</div>'+
+  '<h2>Business Legal</h2>'+
+  '<p>Corporate law, contracts, IP & compliance — rono.v1.</p>'+
+  '<p class="w-note" style="color:var(--accent3);font-size:11px">AI guidance only · always consult a licensed attorney for binding decisions</p>'+
+  '<div class="chips">'+
+  '<button class="chip" onclick="bizLegalSuggest(\'Review this business contract\')">Review contract</button>'+
+  '<button class="chip" onclick="bizLegalSuggest(\'How do I protect my intellectual property?\')">IP protection</button>'+
+  '<button class="chip" onclick="bizLegalSuggest(\'What business structure should I use?\')">Business structure</button>'+
+  '</div></div></div>'+
+  '<div class="input-area">'+
+  '<div class="irow">'+
+  '<textarea id="bizlegal-inp" rows="1" placeholder="Ask your business legal question…" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();bizLegalSend();}" oninput="rzta(this)"></textarea>'+
+  '<div class="iacts"><button class="ibtn" onclick="bizLegalSend()"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>'+
+  '</div></div></div>';
+}
+function bizLegalSuggest(t){var i=document.getElementById('bizlegal-inp');if(i){i.value=t;bizLegalSend();}}
+async function bizLegalSend(){
+  var inp=document.getElementById('bizlegal-inp');if(!inp||!inp.value.trim())return;
+  var txt=inp.value.trim();inp.value='';rzta(inp);
+  var msgs=document.getElementById('msgs');if(!msgs)return;
+  var w=document.getElementById('welcome');if(w)w.style.display='none';
+  msgs.innerHTML+='<div class="msg user"><div class="bub">'+txt+'</div></div>';
+  msgs.scrollTop=msgs.scrollHeight;
+  _bizLegalHist.push({role:'user',content:txt});
+  var thinking=document.createElement('div');thinking.className='msg ai';thinking.innerHTML='<div class="bub"><div style="display:flex;gap:4px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';msgs.appendChild(thinking);msgs.scrollTop=msgs.scrollHeight;
+  try{
+    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:PROMPTS.bizlegal,messages:_bizLegalHist})});
+    if(!r.ok){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Error — check connection.</div></div>';return;}
+    var d=await r.json();
+    var reply=(d.content&&d.content[0]&&d.content[0].text)||'No response.';
+    _bizLegalHist.push({role:'assistant',content:reply});
+    thinking.remove();
+    msgs.innerHTML+='<div class="msg ai"><div class="bub">'+reply.replace(/\n/g,'<br>')+'</div></div>';
+    msgs.scrollTop=msgs.scrollHeight;sfxReceive();
+  }catch(e){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Connection failed.</div></div>';}
+}
+
+/* ════════════════════════════════════════
+   BUSINESS FINANCE — Banking + Tax
+   ════════════════════════════════════════ */
+function renderBizFinance(){
+  sfxCoin();
+  var txns=getFinanceTxn('BIZ_FINANCE_TXN');
+  var tableHtml=txns.length?financeRenderTxnTable(txns):'';
+  document.getElementById('content').innerHTML=
+  '<div class="gcontent">'+
+  '<div class="g-title">Business Finance</div>'+
+  '<div class="g-sub">Import business bank statements, track expenses, and prepare corporate tax.</div>'+
+  '<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px">'+
+  '<div style="font-size:11px;color:var(--text3);margin-bottom:10px;letter-spacing:0.04em">CONNECT BUSINESS BANK — Export CSV from your portal</div>'+
+  '<div style="font-size:10px;color:var(--text3);margin-bottom:10px">CIBC Business: My Accounts → Transactions → Export CSV &nbsp;|&nbsp; JPMorgan: Accounts → Download Transactions → CSV</div>'+
+  '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+  '<button class="trans-go-btn" onclick="document.getElementById(\'bizfin-csv\').click()">📥 Import CSV</button>'+
+  '<button class="tms-btn" onclick="document.getElementById(\'bizfin-pdf\').click()" style="background:rgba(245,166,35,0.08);border-color:rgba(245,166,35,0.25);color:var(--accent2)">📄 Upload PDF / Invoice</button>'+
+  '<button class="tms-btn" onclick="showDataImport(\'Business Finance\')">📦 Import from Previous Software</button>'+
+  (txns.length?'<button class="tms-btn" onclick="bizFinTaxSummary()">🧾 Corporate Tax Summary</button>':'')+
+  (txns.length?'<button class="tms-btn" onclick="if(confirm(\'Clear all transactions?\')){localStorage.removeItem(\'BIZ_FINANCE_TXN\');renderBizFinance();}">✕ Clear</button>':'')+
+  '</div>'+
+  '<input type="file" id="bizfin-csv" accept=".csv,.txt" style="display:none" onchange="finImportCSV(this,\'BIZ_FINANCE_TXN\',renderBizFinance)">'+
+  '<input type="file" id="bizfin-pdf" accept=".pdf,.jpg,.jpeg,.png,.txt" style="display:none" onchange="finImportPDF(this,\'BIZ_FINANCE_TXN\',\'biz-fin-result\',renderBizFinance)">'+
+  '</div>'+
+  (tableHtml||'<div style="font-size:13px;color:var(--text3);padding:8px 0">No transactions yet. Import a business bank CSV above.</div>')+
+  '<div id="biz-fin-result"></div>'+
+  '</div>';
+}
+async function bizFinTaxSummary(){
+  var txns=getFinanceTxn('BIZ_FINANCE_TXN');
+  var res=document.getElementById('biz-fin-result');
+  if(!txns.length||!res){toast('No transactions to analyse');return;}
+  res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0"><div class="td"></div> Preparing corporate tax summary…</div>';
+  try{
+    var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1200,system:PROMPTS.tax_summary+' Focus on corporate deductions, GST/HST, and business expense categories.',messages:[{role:'user',content:'Business transactions:\n'+JSON.stringify(txns.slice(0,100))}]})});
+    if(!r.ok){res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error — try again.</div>';return;}
+    var d=await r.json();
+    var text=(d.content&&d.content[0]&&d.content[0].text)||'Could not generate.';
+    res.innerHTML='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px;margin-top:14px"><div style="font-size:12px;color:var(--text2);white-space:pre-wrap;line-height:1.8">'+text+'</div></div>';
+    sfxReceive();
+  }catch(ex){res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
+}
+
+/* ════════════════════════════════════════
    BUSINESS FINANCE OVERVIEW
    ════════════════════════════════════════ */
 function renderBizOverview(){
