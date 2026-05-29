@@ -4221,6 +4221,7 @@ function tmsViewLoad(id){
   '<a href="'+mapsUrl+'" target="_blank" style="display:inline-block;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.3);color:var(--accent);font-size:11px;padding:8px 14px;border-radius:8px;text-decoration:none">🗺 View Route ↗</a>'+
   '<button class="tms-btn" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:11px">📧 Dispatch Driver</button>'+
   '<button class="tms-btn" onclick="tmsEditLoad(\''+l.id+'\')" style="font-size:11px">✏️ Edit Load</button>'+
+  (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'pay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
   (l.status!=='DELIVERED'&&l.status!=='Delivered'?'<button class="tms-btn" onclick="tmsSplitLoad(\''+l.id+'\')" style="font-size:11px;border-color:rgba(255,200,60,0.4);color:#ffc83c">⚡ Split Load</button>':'')+''+
   '<button class="tms-btn" onclick="tmsAddRelayLeg(\''+l.id+'\')" style="font-size:11px;border-color:rgba(78,200,255,0.4);color:#4ec8ff">🔁 Add Relay Leg</button>'+
   (l.trackingEnabled||l.lastGpsLat?'<button class="tms-btn" onclick="tmsShowClientMap(\''+l.id+'\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">🛰 Live Map</button>':'')+''+
@@ -4397,6 +4398,21 @@ function tmsSaveLoad(id){
   l.notes=document.getElementById('el-notes').value;
   var elPaps=document.getElementById('el-paps');
   if(elPaps)l.paps=elPaps.value.trim()||l.paps||'';
+  /* Mirror tmsUpdateStatus Delivered logic so edit-form saves also connect to Driver Pay */
+  if(l.status==='Delivered'||l.status==='DELIVERED'){
+    if(!l.deliveredDate)l.deliveredDate=new Date().toLocaleDateString();
+    l.past=true;
+    if(!l.driverPay&&l.revenue){l.driverPay=Math.round(l.revenue*((D.driverPayRate||28)/100));}
+    var dObj=D.drivers.find(function(d){return d.name===l.driver;});
+    if(dObj&&!l._statsCounted){
+      l._statsCounted=true;
+      if(!dObj.stats)dObj.stats={completed:0,pending:0,earnings:0};
+      dObj.stats.completed=(dObj.stats.completed||0)+1;
+      dObj.stats.earnings=(dObj.stats.earnings||0)+(l.driverPay||0);
+      dObj.status='Available';dObj.load=null;
+    }
+    _markLoadPendingInvoice(l);
+  }
   _fbPushTMS();
   document.getElementById('edit-load-overlay').remove();
   sfxSuccess();toast('Load updated · '+id);
@@ -9155,6 +9171,8 @@ function dispatchSend(loadId){
     if(truck)load.truck=truck;
     if(trailer)load.trailer=trailer;
     load.dispatched=true;load.dispatchDate=new Date().toLocaleDateString();load.dispatchEmail=email;
+    /* Stamp driverPay so Driver Pay module always has a dollar figure */
+    if(!load.driverPay&&load.revenue){load.driverPay=Math.round(load.revenue*((window.TMS_DATA.driverPayRate||28)/100));}
   }
   var pending=window._dispatchPendingFiles&&window._dispatchPendingFiles[loadId];
   if(pending&&pending.length&&load){
