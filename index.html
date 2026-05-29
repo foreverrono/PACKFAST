@@ -3763,7 +3763,7 @@ var _tmsShowHistory=false;
 function tmsTransport(){
   var D=window.TMS_DATA;
   var driverOpts=D.drivers.map(function(d){return '<option value="'+d.name+'">'+d.name+'</option>';}).join('');
-  var truckOpts=D.equipment.filter(function(e){return e.type==='Truck';}).map(function(e){return '<option value="'+e.id+'">Truck #'+(e.truckNum||e.id)+' · '+e.make+' ('+e.plate+')</option>';}).join('');
+  var truckOpts=D.equipment.filter(function(e){return (e.category==='Truck'||e.type==='Truck');}).map(function(e){return '<option value="'+(e.unit||e.id)+'">Unit '+(e.unit||e.id)+' · '+e.make+(e.model?' '+e.model:'')+(e.year?' '+e.year:'')+' ('+e.plate+')</option>';}).join('');
   var custOpts='<option value="">— Select customer —</option>'+(D.customers||[]).map(function(c){return '<option value="'+c.name+'">'+c.name+(c.company?' · '+c.company:'')+'</option>';}).join('');
   var sc={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
   var activeLds=D.loads.filter(function(l){return !l.past;});
@@ -4596,10 +4596,10 @@ function _bcNewTripForm(){
   var D=window.TMS_DATA;
   var loadOpts=D.loads.length?D.loads.map(function(l){return '<option value="'+l.id+'">'+l.id+(l.ref?' — '+l.ref:'')+(l.driver?' ('+l.driver+')':'')+'</option>';}).join(''):'<option value="">— No loads —</option>';
   var drvOpts=D.drivers.length?D.drivers.map(function(d){return '<option value="'+d.id+'">'+d.name+(d.lic?' · '+d.lic:'')+'</option>';}).join(''):'<option value="">— No drivers —</option>';
-  var trucks=D.equipment.filter(function(e){return e.type==='Truck';});
-  var truckOpts=trucks.length?trucks.map(function(e){return '<option value="'+e.id+'">#'+e.truckNum+' '+e.make+' '+e.year+' — '+e.plate+'</option>';}).join(''):'<option value="">— No trucks —</option>';
-  var trailers=D.equipment.filter(function(e){return e.type==='Trailer';});
-  var trailerOpts='<option value="">— None —</option>'+(trailers.map(function(e){return '<option value="'+e.id+'">Trailer #'+e.truckNum+' — '+e.plate+'</option>';}).join(''));
+  var trucks=D.equipment.filter(function(e){return (e.category==='Truck'||e.type==='Truck');});
+  var truckOpts=trucks.length?trucks.map(function(e){return '<option value="'+(e.unit||e.id)+'">Unit '+(e.unit||e.id)+' · '+e.make+(e.model?' '+e.model:'')+(e.year?' '+e.year:'')+' — '+e.plate+'</option>';}).join(''):'<option value="">— No trucks —</option>';
+  var trailers=D.equipment.filter(function(e){return (e.category==='Trailer'||e.type==='Trailer');});
+  var trailerOpts='<option value="">— None —</option>'+(trailers.map(function(e){return '<option value="'+(e.unit||e.id)+'">'+( e.unit||e.id)+(e.type?' — '+e.type:'')+' ('+e.plate+')</option>';}).join(''));
   var acePorts='<option value="0901">Ambassador Bridge — Windsor/Detroit</option><option value="0957">Blue Water Bridge — Sarnia/Port Huron</option><option value="0712">Peace Bridge — Fort Erie/Buffalo</option><option value="0801">Rainbow Bridge — Niagara Falls</option><option value="0101">Champlain — Lacolle/Champlain NY</option><option value="0304">Thousand Islands Bridge</option>';
   var now=new Date(Date.now()+3600000);
   var dtStr=now.toISOString().slice(0,16);
@@ -9341,8 +9341,8 @@ function tmsCalcDriverPay(load){
 function tmsNewTripForm(){
   var D=window.TMS_DATA;
   var drvOpts=(D.drivers||[]).map(function(d){return '<option value="'+d.id+'">'+d.name+'</option>';}).join('');
-  var truckOpts=(D.equipment||[]).filter(function(e){return e.type==='Truck';}).map(function(e){return '<option value="'+e.id+'">Truck #'+(e.truckNum||e.id)+' · '+e.make+'</option>';}).join('');
-  var trailerOpts=(D.equipment||[]).filter(function(e){return e.type==='Trailer';}).map(function(e){return '<option value="'+e.id+'">'+e.id+'</option>';}).join('');
+  var truckOpts=(D.equipment||[]).filter(function(e){return (e.category==='Truck'||e.type==='Truck');}).map(function(e){return '<option value="'+(e.unit||e.id)+'">Unit '+(e.unit||e.id)+' · '+e.make+(e.model?' '+e.model:'')+' ('+e.plate+')</option>';}).join('');
+  var trailerOpts=(D.equipment||[]).filter(function(e){return (e.category==='Trailer'||e.type==='Trailer');}).map(function(e){var u=e.unit||e.id;return '<option value="'+u+'">'+u+(e.type?' — '+e.type:'')+(e.plate?' ('+e.plate+')':'')+'</option>';}).join('');
   var availLoads=(D.loads||[]).filter(function(l){return l.status==='ASSIGNED'&&!l.tripId;});
   var loadOpts=availLoads.map(function(l){return '<option value="'+l.id+'">'+l.id+' · '+l.origin+' → '+l.dest+'</option>';}).join('');
   var overlay=document.createElement('div');
@@ -9907,9 +9907,12 @@ function mergeFMData(){
   /* Drivers */
   var existingDrvIds=new Set(D.drivers.map(function(d){return d.id;}));
   (window.FM_DRIVERS||[]).forEach(function(d){if(!existingDrvIds.has(d.id))D.drivers.push(d);});
-  /* Equipment */
+  /* Equipment — merge by ID so FM fleet always loads alongside any manual entries */
   if(!D.equipment)D.equipment=[];
-  if(window.FM_EQUIPMENT&&window.FM_EQUIPMENT.length&&D.equipment.length===0)window.FM_EQUIPMENT.forEach(function(e){D.equipment.push(e);});
+  if(window.FM_EQUIPMENT&&window.FM_EQUIPMENT.length){
+    var existingEqIds=new Set(D.equipment.map(function(e){return e.id;}));
+    window.FM_EQUIPMENT.forEach(function(e){if(!existingEqIds.has(e.id))D.equipment.push(e);});
+  }
   /* Pending / active loads — inject as In Transit */
   (window.FM_PENDING||[]).forEach(function(l){
     if(existingIds.has(l.id))return;
