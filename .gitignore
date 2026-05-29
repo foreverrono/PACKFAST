@@ -6,3 +6,4 @@ transport-data.js
 *.py
 firebase-upload.js
 
+.vercel

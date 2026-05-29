@@ -7194,120 +7194,138 @@ function tmsUpdateStatus(loadId,status){
 function _dpParseDate(s){
   if(!s)return null;
   var d=new Date(s);if(!isNaN(d.getTime()))return d;
-  /* M/D/YYYY fallback */
   var p=s.split('/');
   if(p.length===3){d=new Date(parseInt(p[2]),parseInt(p[0])-1,parseInt(p[1]));if(!isNaN(d.getTime()))return d;}
   return null;
+}
+function _dpWeekStart(d){var ws=new Date(d);ws.setDate(d.getDate()-d.getDay());ws.setHours(0,0,0,0);return ws;}
+function _dpWeekNum(d){
+  var jan1=new Date(d.getFullYear(),0,1);
+  var fs=new Date(jan1);fs.setDate(jan1.getDate()-jan1.getDay());fs.setHours(0,0,0,0);
+  return Math.floor((d-fs)/604800000)+1;
+}
+function _dpWeekNumToStart(wn,yr){
+  var jan1=new Date(yr,0,1);
+  var fs=new Date(jan1);fs.setDate(jan1.getDate()-jan1.getDay());fs.setHours(0,0,0,0);
+  var ws=new Date(fs);ws.setDate(fs.getDate()+(wn-1)*7);return ws;
+}
+function _dpGoWeek(ts){window._dpWeekTs=ts;tmsDriverPay();}
+function _dpJumpWeek(){
+  var wn=parseInt((document.getElementById('dp-wnum')||{}).value)||1;
+  var yr=parseInt((document.getElementById('dp-yr')||{}).value)||new Date().getFullYear();
+  wn=Math.max(1,Math.min(53,wn));
+  _dpGoWeek(_dpWeekNumToStart(wn,yr).getTime());
 }
 function tmsDriverPay(){
   var D=window.TMS_DATA;
   var payRate=D.driverPayRate||28;
   if(!D.driverWeekPaid)D.driverWeekPaid={};
-  if(typeof window._dpWeekOffset==='undefined')window._dpWeekOffset=0;
-  var offset=window._dpWeekOffset;
-
-  /* ── Week boundaries ── */
   var now=new Date();
-  var weekStart=new Date(now);
-  weekStart.setDate(now.getDate()-now.getDay()+offset*7);
-  weekStart.setHours(0,0,0,0);
-  var weekEnd=new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate()+6);
-  weekEnd.setHours(23,59,59,999);
+  var curWeekStart=_dpWeekStart(now);
+  if(!window._dpWeekTs)window._dpWeekTs=curWeekStart.getTime();
+  var weekStart=new Date(window._dpWeekTs);
+  var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);weekEnd.setHours(23,59,59,999);
+  var selectedWN=_dpWeekNum(weekStart);
+  var selectedYr=weekStart.getFullYear();
+  var isCurrent=weekStart.getTime()===curWeekStart.getTime();
+  var fmt=function(d){return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});};
 
-  var fmtDate=function(d){return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});};
-  var weekLabel=fmtDate(weekStart)+' – '+fmtDate(weekEnd)+', '+weekEnd.getFullYear();
-
-  /* ── Gather delivered loads in this week ── */
-  var weekLoads=D.loads.filter(function(l){
-    if(l.status!=='Delivered'&&l.status!=='DELIVERED')return false;
-    var d=_dpParseDate(l.deliveredDate)||_dpParseDate(l.date);
-    return d&&d>=weekStart&&d<=weekEnd;
-  });
-
-  /* ── Group by driver ── */
-  var driverMap={};
-  weekLoads.forEach(function(l){
-    var drv=l.driver||'Unknown';
-    if(!driverMap[drv])driverMap[drv]={loads:[],total:0};
-    var pay=parseFloat(l.driverPay||l.driver_pay||0);
-    if(!pay&&l.revenue)pay=Math.round((l.revenue||0)*payRate/100);
-    var orig=(l.origin||'').split(',')[0];
-    var dst=(l.dest||'').split(',')[0];
-    driverMap[drv].loads.push({id:l.id,ref:l.ref||'',route:orig+' → '+dst,revenue:l.revenue||0,currency:l.currency||'CAD',pay:pay,date:l.deliveredDate||l.date||''});
-    driverMap[drv].total+=pay;
-  });
-
-  var totalPay=Object.keys(driverMap).reduce(function(s,k){return s+driverMap[k].total;},0);
-  var totalLoads=weekLoads.length;
-  var driverCount=Object.keys(driverMap).length;
-
-  /* ── Pre-compute load count + total pay per week for badges ── */
+  /* Pre-compute badge data for tabs */
   var weekCounts={};var weekPays={};
   D.loads.forEach(function(l){
     if(l.status!=='Delivered'&&l.status!=='DELIVERED')return;
     var d=_dpParseDate(l.deliveredDate)||_dpParseDate(l.date);if(!d)return;
-    var ws2=new Date(d);ws2.setDate(d.getDate()-d.getDay());ws2.setHours(0,0,0,0);
-    var k=ws2.toISOString().slice(0,10);
+    var k=_dpWeekStart(d).toISOString().slice(0,10);
     weekCounts[k]=(weekCounts[k]||0)+1;
     var pay=parseFloat(l.driverPay||l.driver_pay||0);
     if(!pay&&l.revenue)pay=Math.round((l.revenue||0)*payRate/100);
     weekPays[k]=(weekPays[k]||0)+pay;
   });
 
-  /* ── Build HTML ── */
+  /* Loads for selected week */
+  var weekLoads=D.loads.filter(function(l){
+    if(l.status!=='Delivered'&&l.status!=='DELIVERED')return false;
+    var d=_dpParseDate(l.deliveredDate)||_dpParseDate(l.date);
+    return d&&d>=weekStart&&d<=weekEnd;
+  });
+
+  /* Group by driver */
+  var driverMap={};
+  weekLoads.forEach(function(l){
+    var drv=l.driver||'Unknown';
+    if(!driverMap[drv])driverMap[drv]={loads:[],total:0};
+    var pay=parseFloat(l.driverPay||l.driver_pay||0);
+    if(!pay&&l.revenue)pay=Math.round((l.revenue||0)*payRate/100);
+    var orig=(l.origin||'').split(',')[0];var dst=(l.dest||'').split(',')[0];
+    driverMap[drv].loads.push({id:l.id,ref:l.ref||'',route:orig+' → '+dst,revenue:l.revenue||0,currency:l.currency||'CAD',pay:pay,date:l.deliveredDate||l.date||''});
+    driverMap[drv].total+=pay;
+  });
+  var totalPay=Object.keys(driverMap).reduce(function(s,k){return s+driverMap[k].total;},0);
+  var totalLoads=weekLoads.length;
+  var driverCount=Object.keys(driverMap).length;
+
   var html='';
 
-  /* Title */
-  html+='<div class="tms-section-title" style="margin-bottom:14px">Driver Pay</div>';
+  /* ── Header: title + week number jump ── */
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">';
+  html+='<div class="tms-section-title" style="margin:0">Driver Pay</div>';
+  html+='<div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:6px 10px">';
+  html+='<span style="font-size:10px;color:var(--text3);letter-spacing:0.06em;white-space:nowrap">WEEK</span>';
+  html+='<input id="dp-wnum" class="tms-input" type="number" min="1" max="53" value="'+selectedWN+'" style="width:52px;padding:4px 6px;font-size:13px;text-align:center" onkeydown="if(event.key===\'Enter\')_dpJumpWeek()">';
+  html+='<span style="font-size:10px;color:var(--text3)">of</span>';
+  html+='<input id="dp-yr" class="tms-input" type="number" min="2020" max="2040" value="'+selectedYr+'" style="width:68px;padding:4px 6px;font-size:13px;text-align:center" onkeydown="if(event.key===\'Enter\')_dpJumpWeek()">';
+  html+='<button class="tms-btn sm primary" onclick="_dpJumpWeek()" style="padding:4px 12px;font-size:11px">Go</button>';
+  if(!isCurrent)html+='<button class="tms-btn sm" onclick="_dpGoWeek('+curWeekStart.getTime()+')" style="padding:4px 10px;font-size:11px">Today</button>';
+  html+='</div></div>';
 
-  /* Week tab bar — last 12 weeks */
-  var now2=new Date();
-  html+='<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:18px;scrollbar-width:thin;-webkit-overflow-scrolling:touch">';
-  for(var w=0;w>=-11;w--){
-    var ws2=new Date(now2);
-    ws2.setDate(now2.getDate()-now2.getDay()+w*7);ws2.setHours(0,0,0,0);
-    var we2=new Date(ws2);we2.setDate(ws2.getDate()+6);we2.setHours(23,59,59,999);
-    var tk=ws2.toISOString().slice(0,10);
-    var tCount=weekCounts[tk]||0;
-    var tPay=weekPays[tk]||0;
-    var isActive=w===offset;
-    var topLabel=w===0?'This Week':w===-1?'Last Week':fmtDate(ws2)+' – '+fmtDate(we2);
-    var subLabel=w===0||w===-1?fmtDate(ws2)+' – '+fmtDate(we2):'';
-    html+='<button onclick="window._dpWeekOffset='+w+';tmsDriverPay()" style="flex-shrink:0;padding:9px 14px;border-radius:10px;border:0.5px solid '+(isActive?'var(--accent)':'var(--border)')+';background:'+(isActive?'rgba(224,123,32,0.1)':'var(--surface2)')+';color:'+(isActive?'var(--accent)':'var(--text2)')+';cursor:pointer;font-family:inherit;text-align:left;transition:all 0.15s;min-width:110px">';
-    html+='<div style="font-size:11px;font-weight:'+(isActive?'500':'400')+';white-space:nowrap">'+topLabel+'</div>';
-    if(subLabel)html+='<div style="font-size:9px;color:'+(isActive?'rgba(224,123,32,0.7)':'var(--text3)')+';margin-top:1px;white-space:nowrap">'+subLabel+'</div>';
-    if(tCount>0){
-      html+='<div style="margin-top:5px;display:flex;align-items:center;gap:4px">';
-      html+='<span style="font-size:9px;background:'+(isActive?'rgba(224,123,32,0.2)':'rgba(255,255,255,0.06)')+';color:'+(isActive?'var(--accent)':'var(--text3)')+';border-radius:4px;padding:1px 5px">'+tCount+' load'+(tCount!==1?'s':'')+'</span>';
-      html+='<span style="font-size:9px;color:'+(isActive?'rgba(224,123,32,0.8)':'var(--text3)')+'">$'+tPay.toLocaleString(undefined,{maximumFractionDigits:0})+'</span>';
-      html+='</div>';
-    }else{
-      html+='<div style="margin-top:5px;font-size:9px;color:var(--text3);opacity:0.4">—</div>';
-    }
+  /* ── Quick-access tabs: last 8 weeks ── */
+  html+='<div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:thin;-webkit-overflow-scrolling:touch">';
+  for(var w=0;w>=-7;w--){
+    var ws=new Date(curWeekStart);ws.setDate(curWeekStart.getDate()+w*7);ws.setHours(0,0,0,0);
+    var we=new Date(ws);we.setDate(ws.getDate()+6);
+    var tk=ws.toISOString().slice(0,10);
+    var tCount=weekCounts[tk]||0;var tPay=weekPays[tk]||0;
+    var wn=_dpWeekNum(ws);
+    var isActive=ws.getTime()===weekStart.getTime();
+    var lbl=w===0?'This Week':w===-1?'Last Week':'W'+wn;
+    var dateLbl=fmt(ws)+' – '+fmt(we);
+    html+='<button onclick="_dpGoWeek('+ws.getTime()+')" style="flex-shrink:0;padding:8px 12px;border-radius:9px;border:0.5px solid '+(isActive?'var(--accent)':'var(--border)')+';background:'+(isActive?'rgba(224,123,32,0.1)':'var(--surface2)')+';color:'+(isActive?'var(--accent)':'var(--text2)')+';cursor:pointer;font-family:inherit;text-align:left;transition:all 0.15s;min-width:90px">';
+    html+='<div style="font-size:11px;font-weight:'+(isActive?'500':'400')+';white-space:nowrap">'+lbl+'</div>';
+    html+='<div style="font-size:9px;color:'+(isActive?'rgba(224,123,32,0.65)':'var(--text3)')+';margin-top:1px;white-space:nowrap">'+dateLbl+'</div>';
+    html+=(tCount>0?'<div style="margin-top:4px;font-size:9px;color:'+(isActive?'var(--accent)':'var(--text3)')+'">'+tCount+' load'+(tCount!==1?'s':'')+' \xb7 $'+tPay.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>':
+      '<div style="margin-top:4px;font-size:9px;color:var(--text3);opacity:0.35">no loads</div>');
+    html+='</button>';
+  }
+  /* If selected week is outside the last 8, show it as a pinned tab */
+  if(weekStart.getTime()<new Date(curWeekStart).setDate(curWeekStart.getDate()-49)||weekStart.getTime()>curWeekStart.getTime()){
+    var selTk=weekStart.toISOString().slice(0,10);
+    var selC=weekCounts[selTk]||0;var selP=weekPays[selTk]||0;
+    html+='<button style="flex-shrink:0;padding:8px 12px;border-radius:9px;border:0.5px solid var(--accent);background:rgba(224,123,32,0.1);color:var(--accent);font-family:inherit;text-align:left;min-width:90px">';
+    html+='<div style="font-size:11px;font-weight:500;white-space:nowrap">W'+selectedWN+' \xb7 '+selectedYr+'</div>';
+    html+='<div style="font-size:9px;color:rgba(224,123,32,0.65);margin-top:1px;white-space:nowrap">'+fmt(weekStart)+' – '+fmt(weekEnd)+'</div>';
+    html+=(selC>0?'<div style="margin-top:4px;font-size:9px;color:var(--accent)">'+selC+' loads \xb7 $'+selP.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>':
+      '<div style="margin-top:4px;font-size:9px;opacity:0.35">no loads</div>');
     html+='</button>';
   }
   html+='</div>';
 
+  /* Selected week label */
+  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:16px">'+
+    '<span style="color:var(--accent2);font-weight:500">Week '+selectedWN+', '+selectedYr+'</span>'+
+    ' \xb7 '+fmt(weekStart)+' – '+fmt(weekEnd)+
+    (isCurrent?' <span style="font-size:10px;background:rgba(245,166,35,0.12);color:var(--accent2);border-radius:4px;padding:2px 7px;margin-left:4px">current</span>':'')+
+  '</div>';
+
   /* KPI strip */
   html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;max-width:520px">';
-  html+='<div style="background:rgba(245,166,35,0.07);border:0.5px solid rgba(245,166,35,0.25);border-radius:12px;padding:14px 16px;text-align:center">'+
-    '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">Total Pay</div>'+
-    '<div style="font-size:26px;font-weight:300;color:var(--text)">$'+totalPay.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>'+
-  '</div>';
-  html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">'+
-    '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Loads</div>'+
-    '<div style="font-size:26px;font-weight:300;color:var(--text)">'+totalLoads+'</div>'+
-  '</div>';
-  html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center">'+
-    '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Drivers</div>'+
-    '<div style="font-size:26px;font-weight:300;color:var(--text)">'+driverCount+'</div>'+
-  '</div>';
+  html+='<div style="background:rgba(245,166,35,0.07);border:0.5px solid rgba(245,166,35,0.25);border-radius:12px;padding:14px 16px;text-align:center"><div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent2);margin-bottom:6px">Total Pay</div><div style="font-size:26px;font-weight:300;color:var(--text)">$'+totalPay.toLocaleString(undefined,{maximumFractionDigits:0})+'</div></div>';
+  html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center"><div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Loads</div><div style="font-size:26px;font-weight:300;color:var(--text)">'+totalLoads+'</div></div>';
+  html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center"><div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Drivers</div><div style="font-size:26px;font-weight:300;color:var(--text)">'+driverCount+'</div></div>';
   html+='</div>';
 
   /* Driver cards */
   if(driverCount===0){
-    html+='<div style="font-size:13px;color:var(--text3);padding:28px 0;border:0.5px dashed var(--border);border-radius:12px;text-align:center">No delivered loads for this week.<br><span style="font-size:11px;opacity:0.6">Select another week above to view pay.</span></div>';
+    html+='<div style="font-size:13px;color:var(--text3);padding:28px 0;border:0.5px dashed var(--border);border-radius:12px;text-align:center">No delivered loads for Week '+selectedWN+', '+selectedYr+'.<br><span style="font-size:11px;opacity:0.6">Try a different week above, or type a week number.</span></div>';
   }else{
     var weekKey=weekStart.toISOString().slice(0,10);
     var driverNames=Object.keys(driverMap).sort();
@@ -7318,61 +7336,28 @@ function tmsDriverPay(){
       var isPaid=!!(D.driverWeekPaid[paidKey]);
       var paidEntry=D.driverWeekPaid[paidKey];
       html+='<div style="background:var(--surface);border:0.5px solid '+(isPaid?'rgba(99,230,130,0.22)':'rgba(245,166,35,0.22)')+';border-radius:12px;overflow:hidden">';
-      /* Card header */
       html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:0.5px solid var(--border)">';
-      html+='<div>'+
-        '<div style="font-size:14px;font-weight:500;color:var(--text)">'+drv+'</div>'+
-        '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+dp.loads.length+' load'+(dp.loads.length!==1?'s':'')+' · '+payRate+'% of revenue</div>'+
-      '</div>';
-      html+='<div style="text-align:right">'+
-        '<div style="font-size:22px;font-weight:300;color:var(--accent2)">$'+dp.total.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>'+
-        (isPaid?
-          '<div style="font-size:9px;color:#63e682;letter-spacing:0.05em">✓ Paid '+paidEntry.paidDate+'</div>':
-          '<span class="tms-badge yellow" style="font-size:8px">Unpaid</span>'
-        )+
-      '</div>';
+      html+='<div><div style="font-size:14px;font-weight:500;color:var(--text)">'+drv+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+dp.loads.length+' load'+(dp.loads.length!==1?'s':'')+' \xb7 '+payRate+'% of revenue</div></div>';
+      html+='<div style="text-align:right"><div style="font-size:22px;font-weight:300;color:var(--accent2)">$'+dp.total.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>'+(isPaid?'<div style="font-size:9px;color:#63e682;letter-spacing:0.05em">✓ Paid '+paidEntry.paidDate+'</div>':'<span class="tms-badge yellow" style="font-size:8px">Unpaid</span>')+'</div>';
       html+='</div>';
-      /* Load table */
-      html+='<div style="overflow-x:auto"><table class="tms-table" style="min-width:560px"><thead><tr>'+
-        '<th class="tms-th">Load ID</th><th class="tms-th">Route</th><th class="tms-th">Revenue</th><th class="tms-th">Driver Pay</th><th class="tms-th">Date</th>'+
-        '</tr></thead><tbody>';
+      html+='<div style="overflow-x:auto"><table class="tms-table" style="min-width:560px"><thead><tr><th class="tms-th">Load ID</th><th class="tms-th">Route</th><th class="tms-th">Revenue</th><th class="tms-th">Driver Pay</th><th class="tms-th">Date</th></tr></thead><tbody>';
       dp.loads.forEach(function(ld){
-        html+='<tr class="tms-tr">'+
-          '<td class="tms-td" style="color:var(--accent);font-size:11px">'+ld.id+(ld.ref&&ld.ref!==ld.id?'<div style="font-size:9px;color:var(--text3)">'+ld.ref+'</div>':'')+'</td>'+
-          '<td class="tms-td" style="font-size:10px;color:var(--text3);max-width:200px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ld.route+'</div></td>'+
-          '<td class="tms-td" style="font-size:11px">$'+ld.revenue.toLocaleString()+'<span style="font-size:9px;color:var(--text3);margin-left:3px">'+ld.currency+'</span></td>'+
-          '<td class="tms-td" style="color:var(--accent2);font-weight:500">$'+ld.pay.toLocaleString(undefined,{maximumFractionDigits:0})+'</td>'+
-          '<td class="tms-td" style="font-size:10px;color:var(--text3)">'+ld.date+'</td>'+
-        '</tr>';
+        html+='<tr class="tms-tr"><td class="tms-td" style="color:var(--accent);font-size:11px">'+ld.id+(ld.ref&&ld.ref!==ld.id?'<div style="font-size:9px;color:var(--text3)">'+ld.ref+'</div>':'')+'</td><td class="tms-td" style="font-size:10px;color:var(--text3);max-width:200px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ld.route+'</div></td><td class="tms-td" style="font-size:11px">$'+ld.revenue.toLocaleString()+'<span style="font-size:9px;color:var(--text3);margin-left:3px">'+ld.currency+'</span></td><td class="tms-td" style="color:var(--accent2);font-weight:500">$'+ld.pay.toLocaleString(undefined,{maximumFractionDigits:0})+'</td><td class="tms-td" style="font-size:10px;color:var(--text3)">'+ld.date+'</td></tr>';
       });
       html+='</tbody></table></div>';
-      /* Action */
       if(!isPaid){
-        html+='<div style="padding:10px 16px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:10px">'+
-          '<button class="tms-btn primary" style="font-size:11px" onclick="tmsMarkDriverPaidWeek(\''+drv.replace(/'/g,"\\'")+'\',' +weekStart.getTime()+','+weekEnd.getTime()+')">'+
-            'Mark $'+dp.total.toLocaleString(undefined,{maximumFractionDigits:0})+' Paid'+
-          '</button>'+
-          '<span style="font-size:10px;color:var(--text3)">Records payment for this week</span>'+
-        '</div>';
+        html+='<div style="padding:10px 16px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:10px"><button class="tms-btn primary" style="font-size:11px" onclick="tmsMarkDriverPaidWeek(\''+drv.replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\',' +weekStart.getTime()+','+weekEnd.getTime()+')">Mark $'+dp.total.toLocaleString(undefined,{maximumFractionDigits:0})+' Paid</button><span style="font-size:10px;color:var(--text3)">Records payment for this week</span></div>';
       }
       html+='</div>';
     });
     html+='</div>';
   }
 
-  /* Pay rate setting */
-  html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:12px;max-width:420px;margin-top:4px">'+
-    '<div style="font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:0.08em">BASE PAY RATE</div>'+
-    '<div style="display:flex;gap:8px;align-items:center">'+
-      '<input id="tms-pay-rate" class="tms-input" type="number" value="'+payRate+'" step="0.1" style="width:80px">'+
-      '<span style="font-size:12px;color:var(--text3)">% of load revenue</span>'+
-      '<button class="tms-btn sm" onclick="var v=parseFloat(document.getElementById(\'tms-pay-rate\').value)||2;window.TMS_DATA.driverPayRate=v;_fbPushTMS();sfxSuccess();toast(\'Rate updated: \'+v+\'%\');tmsDriverPay()">Save</button>'+
-    '</div>'+
-  '</div>';
+  /* Pay rate */
+  html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:12px;max-width:420px;margin-top:4px"><div style="font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:0.08em">BASE PAY RATE</div><div style="display:flex;gap:8px;align-items:center"><input id="tms-pay-rate" class="tms-input" type="number" value="'+payRate+'" step="0.1" style="width:80px"><span style="font-size:12px;color:var(--text3)">% of load revenue</span><button class="tms-btn sm" onclick="var v=parseFloat(document.getElementById(\'tms-pay-rate\').value)||2;window.TMS_DATA.driverPayRate=v;_fbPushTMS();sfxSuccess();toast(\'Rate updated: \'+v+\'%\');tmsDriverPay()">Save</button></div></div>';
 
   document.getElementById('tms-body').innerHTML=html;
 }
-
 function tmsMarkDriverPaidWeek(drv,weekStartTs,weekEndTs){
   var D=window.TMS_DATA;
   if(!D.driverWeekPaid)D.driverWeekPaid={};
@@ -7393,10 +7378,9 @@ function tmsMarkDriverPaidWeek(drv,weekStartTs,weekEndTs){
   D.driverWeekPaid[key]={paidDate:new Date().toLocaleDateString(),amount:total};
   _fbPushTMS();
   sfxSuccess();
-  toast('Paid · '+drv+' · $'+total.toLocaleString(undefined,{maximumFractionDigits:0}));
+  toast('Paid \xb7 '+drv+' \xb7 $'+total.toLocaleString(undefined,{maximumFractionDigits:0}));
   tmsDriverPay();
 }
-
 function tmsMarkDriverPaid(driverId){
   var D=window.TMS_DATA;
   var d=D.drivers.find(function(x){return x.id===driverId;});
@@ -7405,7 +7389,7 @@ function tmsMarkDriverPaid(driverId){
   var paid=0;
   d.payLog.forEach(function(p){if(p.status!=='paid'){p.status='paid';p.paidDate=now;paid+=(p.estPay||0);}});
   _fbPushTMS();
-  sfxSuccess();toast('Marked paid · '+d.name+' · $'+paid.toLocaleString(undefined,{maximumFractionDigits:0}));
+  sfxSuccess();toast('Marked paid \xb7 '+d.name+' \xb7 $'+paid.toLocaleString(undefined,{maximumFractionDigits:0}));
   tmsDriverPay();
 }
 function sendPrompt(txt){openMod('business');}
