@@ -3595,26 +3595,6 @@ function tmsDashboard(){
   var today=new Date().toLocaleDateString();
   var delivToday=D.loads.filter(function(l){return (l.status==='Delivered'||l.status==='DELIVERED')&&l.deliveredDate===today;}).length;
 
-  /* ── Board rows (all active loads — FM + TMS) ── */
-  var allBoardLoads=fmActive.map(function(l){return {id:l.trip_name||l.id,customer:l.customer||'—',origin:l.origin||'',dest:l.dest||'',driver:l.driver||'—',status:l.status||'Active',_raw:l,_src:'fm'};}).concat(
-    allActiveTms.map(function(l){return {id:l.id,customer:l.customer||'—',origin:l.origin||'',dest:l.dest||'',driver:l.driver||'—',status:l.status||'ASSIGNED',_raw:l,_src:'tms'};}));
-  var sc2={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green','Active':'yellow','ASSIGNED':'purple','EN_ROUTE_PICKUP':'blue','ARRIVED_PICKUP':'yellow','LOADED':'yellow','IN_TRANSIT':'purple','ARRIVED_DELIVERY':'blue','DELIVERED':'green','DELAYED':'red'};
-  var boardRows=allBoardLoads.map(function(r){
-    var orig=(r.origin||'').split(',')[0]||'—';
-    var dst=(r.dest||'').split(',')[0]||'—';
-    var drvFirst=(r.driver||'—').split(' ')[0];
-    var cls=sc2[r.status]||'purple';
-    var lbl=TMS_STATUS_LABELS&&TMS_STATUS_LABELS[r.status]?TMS_STATUS_LABELS[r.status]:r.status;
-    var clickId=r._src==='tms'?r.id:(r._raw&&r._raw.id?r._raw.id:'');
-    var clickFn=clickId?'tmsDashPanel(\''+clickId+'\',\''+r._src+'\')':'';
-    return '<div class="board-row" onclick="'+clickFn+'">'+
-      '<div class="board-row-id">'+r.id+'</div>'+
-      '<div class="board-row-client">'+r.customer+'</div>'+
-      '<div class="board-row-route">'+orig+' → '+dst+'</div>'+
-      '<div class="board-row-driver">'+drvFirst+'</div>'+
-      '<div style="flex-shrink:0"><span class="tms-badge '+cls+'" style="font-size:9px">'+lbl+'</span></div>'+
-      '</div>';
-  }).join('');
 
   var bdy=document.getElementById('tms-body');
   bdy.innerHTML=
@@ -3634,23 +3614,6 @@ function tmsDashboard(){
   '</div>'+
   '</div>'+
 
-  /* ── Active loads board ── */
-  '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden">'+
-  '<div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:0.5px solid var(--border)">'+
-    '<div style="width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:pulse 2s infinite;flex-shrink:0"></div>'+
-    '<span style="font-size:12px;font-weight:500;color:var(--accent2);letter-spacing:0.06em">Active Loads</span>'+
-    '<span style="font-size:10px;color:var(--text3);flex:1">click a row for details</span>'+
-    '<button class="tms-btn sm" onclick="tmsTab(\'transport\')" style="font-size:9px;padding:3px 10px">View All →</button>'+
-  '</div>'+
-  '<div style="display:grid;grid-template-columns:80px 1fr 1.5fr 80px auto;gap:0;padding:6px 14px 4px;border-bottom:0.5px solid var(--border)">'+
-    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">ID</div>'+
-    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Client</div>'+
-    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Route</div>'+
-    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Driver</div>'+
-    '<div style="font-size:8px;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase">Status</div>'+
-  '</div>'+
-  (boardRows||'<div style="padding:20px 16px;font-size:12px;color:var(--text3)">No active loads right now.</div>')+
-  '</div>'+
 
   /* ── KPI row ── */
   '<div class="tms-kpi-grid" id="tms-kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">'+
@@ -5891,7 +5854,8 @@ function tmsDispatchCenter(){
         '<div style="color:var(--text3)">→ '+(l.dest||'—').split(',')[0]+'</div>'+
       '</td>'+
       '<td class="tms-td">'+
-        '<div style="font-size:11px;color:var(--text)">'+l.driver+'</div>'+
+        '<div style="font-size:11px;color:var(--text)">'+(l.driver&&l.driver!=='Unassigned'?l.driver:'—')+'</div>'+
+        (l.bookedBy&&l.bookedBy!=='—'&&l.bookedBy!==l.driver?'<div style="font-size:9px;color:var(--text3)">Entered by: '+l.bookedBy+'</div>':'')+
         (l.truck&&l.truck!=='—'?'<div style="font-size:9px;color:var(--text3)">Truck '+l.truck+(l.trailer?' · '+l.trailer:'')+'</div>':'')+
       '</td>'+
       '<td class="tms-td" style="font-size:10px;color:var(--text2)">'+(l.customer||'—')+'</td>'+
@@ -6861,10 +6825,11 @@ function tmsInvoices(){
       '<div style="font-size:16px;color:'+(paid?'var(--accent2)':'var(--accent)')+'">$'+parseFloat(inv.amount).toFixed(2)+'</div>'+
       '<span class="tms-badge '+(paid?'green':'purple')+'">'+inv.status+'</span>'+
       '</div></div>'+
-      (!paid?'<div style="display:flex;gap:8px;margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border)">'+
-      '<button class="tms-btn primary" style="font-size:10px;padding:5px 12px" onclick="vfMarkPaid('+idx+')">Mark Paid</button>'+
-      '<button class="tms-btn" style="font-size:10px;padding:5px 12px;background:rgba(255,80,80,0.1);border-color:rgba(255,80,80,0.3);color:#ff8080" onclick="vfDeleteInvoice('+idx+')">Delete</button>'+
-      '</div>':'')+
+      '<div style="display:flex;gap:8px;margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border)">'+
+      (!paid?'<button class="tms-btn primary" style="font-size:10px;padding:5px 12px" onclick="vfMarkPaid('+idx+')">Mark Paid</button>':'')+
+      '<button class="tms-btn" style="font-size:10px;padding:5px 12px;background:rgba(245,166,35,0.07);border-color:rgba(245,166,35,0.25);color:var(--accent2)" onclick="vfDownloadInvoice('+idx+')">⬇ Download PDF</button>'+
+      (!paid?'<button class="tms-btn" style="font-size:10px;padding:5px 12px;background:rgba(255,80,80,0.1);border-color:rgba(255,80,80,0.3);color:#ff8080" onclick="vfDeleteInvoice('+idx+')">Delete</button>':'')+
+      '</div>'+
       '</div>';
   }).join('');
   var clientNames=[...new Set((TOI_USERS||[]).filter(function(u){return u.role==='clientportal';}).map(function(u){return u.name;}))];
@@ -6900,7 +6865,8 @@ function tmsInvoices(){
     '<div style="flex:0 0 110px"><div style="font-size:9px;color:var(--text3);margin-bottom:5px;letter-spacing:0.08em">AMOUNT ($)</div>'+
     '<input class="tms-input" id="inv-amount" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:6px 10px;font-size:11px"></div>'+
     '<input type="hidden" id="inv-load-id" value="">'+
-    '<button class="tms-btn primary" onclick="vfCreateInvoice()" style="white-space:nowrap;padding:7px 18px">+ Create</button>'+
+    '<button class="tms-btn primary" onclick="vfCreateInvoice(false)" style="white-space:nowrap;padding:7px 18px">+ Create</button>'+
+    '<button class="tms-btn" onclick="vfCreateInvoice(true)" style="white-space:nowrap;padding:7px 18px;background:rgba(245,166,35,0.07);border-color:rgba(245,166,35,0.25);color:var(--accent2)">⬇ Create & Download</button>'+
     '</div>'+
     '<div class="tms-section-title" style="font-size:12px">All Invoices</div>'+
     (D.clientInvoices.length?invCards:'<div style="font-size:12px;color:var(--text3);padding:8px 0">No invoices yet.</div>');
@@ -6922,7 +6888,7 @@ function vfOpenInvoiceBuilder(loadId){
   descEl&&descEl.scrollIntoView({behavior:'smooth',block:'center'});
   sfxPop&&sfxPop();
 }
-function vfCreateInvoice(){
+function vfCreateInvoice(andDownload){
   var client=document.getElementById('inv-client').value.trim();
   var desc=document.getElementById('inv-desc').value.trim();
   var amount=parseFloat(document.getElementById('inv-amount').value)||0;
@@ -6935,6 +6901,7 @@ function vfCreateInvoice(){
   if(typeof _fbPushTMS==='function')_fbPushTMS();
   sfxSuccess();toast('Invoice created');
   tmsInvoices();
+  if(andDownload)vfDownloadInvoice(D.clientInvoices.length-1);
 }
 function vfMarkPaid(i){
   var D=window.TMS_DATA;
@@ -6949,6 +6916,40 @@ function vfDeleteInvoice(i){
   D.clientInvoices.splice(i,1);
   if(typeof _fbPushTMS==='function')_fbPushTMS();
   tmsInvoices();
+}
+function vfDownloadInvoice(i){
+  var D=window.TMS_DATA;
+  var inv=D.clientInvoices[i];if(!inv)return;
+  var invNum=inv.id||('INV-'+Date.now());
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice '+invNum+'</title>'+
+  '<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Helvetica,Arial,sans-serif;color:#111;background:#fff;padding:48px 56px;max-width:760px;margin:0 auto;}'+
+  'h1{font-size:28px;font-weight:300;letter-spacing:0.04em;margin-bottom:4px;}.sub{font-size:12px;color:#888;letter-spacing:0.06em;}.divider{border:none;border-top:0.5px solid #ddd;margin:28px 0;}'+
+  '.row{display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;}.label{color:#888;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px;}'+
+  '.amount{font-size:32px;font-weight:300;margin-top:8px;}.status{display:inline-block;padding:4px 12px;border-radius:100px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;'+
+  (inv.status==='Paid'?'background:#e6f9ee;color:#1a7a3a;border:0.5px solid #a3e6b8;':'background:#fff7ec;color:#b35a00;border:0.5px solid #f5c07a;')+'}'+
+  '.footer{margin-top:48px;font-size:10px;color:#bbb;text-align:center;}'+
+  '@media print{body{padding:24px;}@page{margin:20mm;}}</style></head><body>'+
+  '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px">'+
+  '<div><h1>INVOICE</h1><div class="sub">'+invNum+'</div></div>'+
+  '<div style="text-align:right"><div style="font-size:18px;font-weight:500;letter-spacing:0.04em">PackFast</div>'+
+  '<div style="font-size:11px;color:#888;margin-top:2px">Transportation Management</div></div></div>'+
+  '<hr class="divider">'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-bottom:28px">'+
+  '<div><div class="label">Billed To</div><div style="font-size:14px;font-weight:500">'+inv.clientName+'</div></div>'+
+  '<div><div class="label">Date</div><div style="font-size:14px">'+inv.date+'</div></div>'+
+  '<div><div class="label">Status</div><div class="status">'+inv.status+'</div></div></div>'+
+  (inv.loadId?'<div style="margin-bottom:20px"><div class="label">Load Reference</div><div style="font-size:13px">'+inv.loadId+'</div></div>':'')+
+  '<hr class="divider">'+
+  '<div style="background:#fafafa;border:0.5px solid #eee;border-radius:8px;padding:20px 24px;margin-bottom:8px">'+
+  '<div class="row" style="font-size:14px"><span>'+inv.description+'</span><span style="font-weight:500">$'+parseFloat(inv.amount).toFixed(2)+'</span></div></div>'+
+  '<div class="row" style="font-size:12px;color:#888;padding:0 4px"><span>Subtotal</span><span>$'+parseFloat(inv.amount).toFixed(2)+'</span></div>'+
+  '<div class="row" style="font-size:15px;font-weight:500;padding:0 4px;margin-top:6px;border-top:0.5px solid #eee;padding-top:10px"><span>Total Due</span><span>$'+parseFloat(inv.amount).toFixed(2)+'</span></div>'+
+  '<div class="footer">Generated by PackFast TMS &nbsp;·&nbsp; '+new Date().toLocaleDateString()+'</div>'+
+  '</body></html>';
+  var blob=new Blob([html],{type:'text/html'});
+  var url=URL.createObjectURL(blob);
+  var w=window.open(url,'_blank');
+  if(w){w.onload=function(){w.print();URL.revokeObjectURL(url);};}
 }
 
 /* ── CLIENT PORTAL ─────────────────────────── */
@@ -8675,20 +8676,132 @@ async function bizLegalSend(){
   var txt=inp.value.trim();inp.value='';rzta(inp);
   var msgs=document.getElementById('msgs');if(!msgs)return;
   var w=document.getElementById('welcome');if(w)w.style.display='none';
-  msgs.innerHTML+='<div class="msg user"><div class="bub">'+txt+'</div></div>';
+  msgs.innerHTML+='<div class="msg user"><div class="bubble u-bub">'+txt+'</div></div>';
   msgs.scrollTop=msgs.scrollHeight;
   _bizLegalHist.push({role:'user',content:txt});
-  var thinking=document.createElement('div');thinking.className='msg ai';thinking.innerHTML='<div class="bub"><div style="display:flex;gap:4px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';msgs.appendChild(thinking);msgs.scrollTop=msgs.scrollHeight;
+  var thinking=document.createElement('div');thinking.className='msg ai';thinking.innerHTML='<div class="bubble ai-bub"><div style="display:flex;gap:4px"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';msgs.appendChild(thinking);msgs.scrollTop=msgs.scrollHeight;
   try{
     var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,system:PROMPTS.bizlegal,messages:_bizLegalHist})});
-    if(!r.ok){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Error — check connection.</div></div>';return;}
+    if(!r.ok){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bubble ai-bub" style="color:var(--accent3)">Error — check connection.</div></div>';return;}
     var d=await r.json();
     var reply=(d.content&&d.content[0]&&d.content[0].text)||'No response.';
     _bizLegalHist.push({role:'assistant',content:reply});
     thinking.remove();
-    msgs.innerHTML+='<div class="msg ai"><div class="bub">'+reply.replace(/\n/g,'<br>')+'</div></div>';
+    msgs.innerHTML+='<div class="msg ai"><div class="bubble ai-bub">'+reply.replace(/\n/g,'<br>')+'</div></div>';
     msgs.scrollTop=msgs.scrollHeight;sfxReceive();
-  }catch(e){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bub" style="color:var(--accent3)">Connection failed.</div></div>';}
+  }catch(e){thinking.remove();msgs.innerHTML+='<div class="msg ai"><div class="bubble ai-bub" style="color:var(--accent3)">Connection failed.</div></div>';}
+}
+
+/* ════════════════════════════════════════
+   FINANCE UTILITIES (shared)
+   ════════════════════════════════════════ */
+function getFinanceTxn(key){try{return JSON.parse(localStorage.getItem(key)||'[]');}catch(e){return[];}}
+function saveFinanceTxn(key,arr){localStorage.setItem(key,JSON.stringify(arr));}
+function parseCSV(text){
+  var lines=text.split('\n').filter(function(l){return l.trim();});
+  if(lines.length<2)return[];
+  var headers=lines[0].split(',').map(function(h){return h.replace(/"/g,'').trim().toLowerCase();});
+  var rows=[];
+  for(var i=1;i<lines.length;i++){
+    var cols=lines[i].match(/(".*?"|[^,]+)/g)||[];
+    var obj={};headers.forEach(function(h,j){obj[h]=(cols[j]||'').replace(/"/g,'').trim();});
+    rows.push(obj);
+  }
+  return rows;
+}
+function detectCSVTransaction(row){
+  var date=row.date||row['transaction date']||row['posting date']||row['trans date']||'';
+  var desc=row.description||row['transaction description']||row['payee']||row['memo']||'';
+  var amount=parseFloat(row.amount||row['credit']||row['debit']||row['withdrawal']||row['deposit']||0);
+  if(!date||!desc)return null;
+  return{date:date,description:desc,amount:amount,category:'Other'};
+}
+function financeRenderTxnTable(txns){
+  if(!txns.length)return'';
+  var cats={};txns.forEach(function(t){cats[t.category]=(cats[t.category]||0)+Math.abs(t.amount);});
+  var catKeys=Object.keys(cats).sort(function(a,b){return cats[b]-cats[a];});
+  var maxCat=cats[catKeys[0]]||1;
+  var catColors=['#e07b20','#f5a623','#f5d0a0','#f5a623','#ff6b6b','#5eead4','#a78bfa','#34d399'];
+  var breakdown='<div style="margin:14px 0">';
+  catKeys.forEach(function(c,i){
+    var pct=Math.round((cats[c]/maxCat)*100);
+    breakdown+='<div class="spend-row"><div class="spend-top"><span>'+c+'</span><span style="color:var(--text2)">$'+cats[c].toFixed(2)+'</span></div>';
+    breakdown+='<div class="spend-bg"><div class="spend-fill" style="width:'+pct+'%;background:'+catColors[i%catColors.length]+'"></div></div></div>';
+  });
+  breakdown+='</div>';
+  var total=txns.reduce(function(s,t){return s+Math.abs(t.amount);},0);
+  var income=txns.filter(function(t){return t.category==='Income';}).reduce(function(s,t){return s+Math.abs(t.amount);},0);
+  return '<div class="stat-grid" style="margin-bottom:14px">'+
+  '<div class="stat-card"><div class="stat-lbl">Total Transactions</div><div class="stat-val">'+txns.length+'</div></div>'+
+  '<div class="stat-card"><div class="stat-lbl">Total Spend</div><div class="stat-val">$'+total.toFixed(0)+'</div></div>'+
+  (income?'<div class="stat-card"><div class="stat-lbl">Income</div><div class="stat-val" style="color:var(--accent2)">$'+income.toFixed(0)+'</div></div>':'')+'</div>'+
+  breakdown;
+}
+async function finImportCSV(input,storageKey,onDone){
+  var f=input.files[0];if(!f)return;
+  var res=document.getElementById('fin-result')||document.getElementById('biz-fin-result');
+  if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Reading CSV…</div>';
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    var rows=parseCSV(e.target.result||'');
+    var txns=rows.map(detectCSVTransaction).filter(function(t){return t!==null;});
+    if(!txns.length){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not parse CSV. Ensure it has date, description, amount columns.</div>';return;}
+    if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Categorizing '+txns.length+' transactions with AI…</div>';
+    try{
+      var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,system:PROMPTS.finance_categorize,messages:[{role:'user',content:'Categorize these transactions:\n'+JSON.stringify(txns.slice(0,80))}]})});
+      if(r.ok){
+        var d=await r.json();
+        var raw=(d.content&&d.content[0]&&d.content[0].text)||'[]';
+        var clean=raw.replace(/^```json?\s*/,'').replace(/```\s*$/,'').trim();
+        try{var categorized=JSON.parse(clean);if(Array.isArray(categorized)&&categorized.length)txns=categorized;}catch(ex){}
+      }
+    }catch(ex){}
+    var existing=getFinanceTxn(storageKey);
+    saveFinanceTxn(storageKey,existing.concat(txns));
+    sfxSuccess();toast(txns.length+' transactions imported');
+    if(onDone)onDone();
+  };
+  reader.readAsText(f);
+}
+async function finImportPDF(input,storageKey,resultId,onDone){
+  var f=input.files[0];if(!f)return;
+  input.value='';
+  var res=document.getElementById(resultId);
+  if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Reading document…</div>';
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    var text='';
+    if(f.type==='application/pdf'||f.name.endsWith('.pdf')){
+      var arr=new Uint8Array(e.target.result);
+      var raw='';for(var i=0;i<Math.min(arr.length,50000);i++)raw+=String.fromCharCode(arr[i]);
+      var matches=raw.match(/\(([^\)]{2,80})\)/g)||[];
+      text=matches.map(function(m){return m.slice(1,-1);}).join(' ').replace(/[^\x20-\x7E\n]/g,' ').replace(/\s+/g,' ').trim();
+      if(!text||text.length<20)text=raw.replace(/[^\x20-\x7E\n]/g,' ').substring(0,6000);
+    }else{
+      text=e.target.result||'';
+    }
+    if(!text||text.length<10){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not read document. Try a text-based PDF or CSV.</div>';return;}
+    if(res)res.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0">Extracting & categorizing expenses with AI…</div>';
+    try{
+      var r=await fetch(API,{method:'POST',headers:hdrs(),body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2500,system:PROMPTS.pdf_expenses,messages:[{role:'user',content:'Extract all expense/income line items from this document:\n\n'+text.substring(0,6000)}]})});
+      if(!r.ok){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">API error — check your key.</div>';return;}
+      var d=await r.json();
+      var raw2=(d.content&&d.content[0]&&d.content[0].text)||'[]';
+      var clean=raw2.replace(/^```json?\s*/,'').replace(/```\s*$/,'').trim();
+      var items=[];try{items=JSON.parse(clean);}catch(x){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Could not parse AI response. Try again.</div>';return;}
+      if(!Array.isArray(items)||!items.length){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">No line items found in document.</div>';return;}
+      var today=new Date().toLocaleDateString();
+      var txns=items.map(function(it){
+        return{date:it.date||today,description:it.description||'Unknown',amount:parseFloat(it.amount)||0,category:it.category||'Other',type:it.type||'expense'};
+      });
+      var existing=getFinanceTxn(storageKey);
+      saveFinanceTxn(storageKey,existing.concat(txns));
+      sfxSuccess();toast(txns.length+' items extracted from PDF');
+      if(onDone)onDone();
+    }catch(ex){if(res)res.innerHTML='<div style="color:var(--accent3);font-size:12px">Connection failed.</div>';}
+  };
+  if(f.type==='application/pdf'||f.name.endsWith('.pdf'))reader.readAsArrayBuffer(f);
+  else reader.readAsText(f);
 }
 
 /* ════════════════════════════════════════
