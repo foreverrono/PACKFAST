@@ -1233,7 +1233,7 @@ var _fbDB=null;
 function _fbPushTMS(){
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
-  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{}}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
+  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{}}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
 }
 function _fbPushUsers(){
   if(!FB_ENABLED||!_fbDB)return;
@@ -1254,6 +1254,8 @@ function _fbListenTMS(){
     if(d.partsRequests)D.partsRequests=d.partsRequests;
     if(d.clientInvoices)D.clientInvoices=d.clientInvoices;
     if(d.carriers)D.carriers=d.carriers;
+    if(d.ownerOperators)D.ownerOperators=d.ownerOperators;
+    if(d.ownerOpWeekPaid)D.ownerOpWeekPaid=d.ownerOpWeekPaid;
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
     if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
@@ -3296,7 +3298,7 @@ function adminSaveEdit(id){
 var TMS_GROUPS={
   dashboard:{label:'Dashboard',subs:null},
   loads:{label:'Loads',subs:[{k:'transport',l:'Transport'},{k:'dispatch',l:'Dispatch'},{k:'loadboard',l:'Load Board'},{k:'ltlbuilder',l:'LTL Builder'},{k:'quotes',l:'Quotes'}]},
-  fleet:{label:'Fleet',subs:[{k:'trucks',l:'Trucks'},{k:'trailers',l:'Trailers'},{k:'drivers',l:'Drivers'},{k:'driverpay',l:'Driver Pay'}]},
+  fleet:{label:'Fleet',subs:[{k:'trucks',l:'Trucks'},{k:'trailers',l:'Trailers'},{k:'drivers',l:'Drivers'},{k:'driverpay',l:'Driver Pay'},{k:'ownerops',l:'Owner Ops'},{k:'oopay',l:'OO Pay'}]},
   operations:{label:'Operations',subs:[{k:'warehousing',l:'Warehousing'},{k:'logistics',l:'Logistics'},{k:'customs',l:'Customs'},{k:'ifta',l:'IFTA'},{k:'samsara',l:'Samsara'}]},
   business:{label:'Business',subs:[{k:'customers',l:'Customers'},{k:'carriers',l:'Carriers'},{k:'permits',l:'Permits'},{k:'finances',l:'Finances'},{k:'payments',l:'Payments'},{k:'performance',l:'Performance'},{k:'invoices',l:'Invoices'}]},
   tutorial:{label:'Tutorial',subs:null}
@@ -3363,6 +3365,8 @@ function _tmsDispatch(key){
   else if(key==='equipment')tmsTrucks();
   else if(key==='drivers')tmsDrivers();
   else if(key==='driverpay')tmsDriverPay();
+  else if(key==='ownerops')tmsOwnerOps();
+  else if(key==='oopay')tmsOOPay();
   else if(key==='warehousing')tmsWarehousing();
   else if(key==='logistics')tmsLogistics();
   else if(key==='customs')tmsCustoms();
@@ -3777,11 +3781,12 @@ function tmsTransport(){
     var cust=l.customer||l.client||'—';
     var custMatch=(D.customers||[]).find(function(c){return c.name===cust||c.company===cust;});
     var custLabel=custMatch?(custMatch.name||(custMatch.company)):cust;
+    var assigneeCell=l.assignedCarrierId?'<span class="tms-badge yellow" style="font-size:8px">Carrier</span>':l.ownerOpId?'<span class="tms-badge purple" style="font-size:8px">OO</span> <span style="font-size:10px;color:var(--text2)">'+(l.ownerOpName||'').split(' · ')[0]+'</span>':l.driver||'—';
     return '<tr class="tms-tr" style="cursor:pointer" onclick="tmsViewLoad(\''+l.id+'\')">'+
     '<td class="tms-td" style="color:var(--text)">'+l.id+'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div></td>'+
     '<td class="tms-td" style="font-size:11px;color:var(--accent2);font-weight:500">'+custLabel+'</td>'+
     '<td class="tms-td" style="font-size:10px;max-width:220px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.origin||'—')+'</div><div style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ '+(l.dest||'—')+'</div></td>'+
-    '<td class="tms-td" style="font-size:11px">'+(l.assignedCarrierId?'<span class="tms-badge yellow" style="font-size:8px">Carrier</span>':l.driver||'—')+'</td>'+
+    '<td class="tms-td" style="font-size:11px">'+assigneeCell+'</td>'+
     '<td class="tms-td"><span class="tms-badge '+cls+'" style="font-size:8px">'+(TMS_STATUS_LABELS[l.status]||l.status)+'</span></td>'+
     '<td class="tms-td" style="color:var(--accent2);font-size:11px">$'+(l.revenue||0).toLocaleString()+'</td>'+
     '</tr>';
@@ -3820,11 +3825,14 @@ function tmsTransport(){
   '<div class="tms-form-full"><label class="tms-label">Assignment</label>'+
   '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
   '<button id="tl-mode-internal" class="tms-btn primary" onclick="tmsSetAssignMode(\'internal\')" style="font-size:11px;padding:7px 16px">🚛 Internal Driver</button>'+
+  '<button id="tl-mode-ownerop" class="tms-btn" onclick="tmsSetAssignMode(\'ownerop\')" style="font-size:11px;padding:7px 16px">🧑‍💼 Owner Operator</button>'+
   '<button id="tl-mode-outsource" class="tms-btn" onclick="tmsSetAssignMode(\'outsource\')" style="font-size:11px;padding:7px 16px">🤝 Outsource to Carrier</button>'+
   '<input type="hidden" id="tl-assign-mode" value="internal">'+
   '</div></div>'+
   '<div id="tl-driver-wrap"><label class="tms-label">Driver</label><select class="tms-select" id="tl-drv"><option value="">Unassigned</option>'+driverOpts+'</select></div>'+
   '<div id="tl-driver-wrap2"><label class="tms-label">Truck</label><select class="tms-select" id="tl-trk"><option value="">TBD</option>'+truckOpts+'</select></div>'+
+  '<div id="tl-oo-wrap" style="display:none"><label class="tms-label">Owner Operator</label><select class="tms-select" id="tl-oo-sel"><option value="">— Select Owner Operator —</option></select></div>'+
+  '<div id="tl-oo-cost-wrap" style="display:none"><label class="tms-label">OO Pay ($)</label><input class="tms-input" id="tl-oo-cost" type="number" placeholder="e.g. 1800"></div>'+
   '<div id="tl-carrier-wrap" style="display:none"><label class="tms-label">Carrier</label><select class="tms-select" id="tl-carrier-sel"><option value="">— Select Carrier —</option></select></div>'+
   '<div id="tl-carrier-cost-wrap" style="display:none"><label class="tms-label">Carrier Rate ($)</label><input class="tms-input" id="tl-carrier-cost" type="number" placeholder="e.g. 2800"></div>'+
   '<div id="tl-carrier-ref-wrap" style="display:none"><label class="tms-label">Carrier Ref #</label><input class="tms-input" id="tl-carrier-ref" placeholder="e.g. RC-10284"></div>'+
@@ -4033,6 +4041,8 @@ function tmsAddLoad(postToBoard){
   var carrierId=(document.getElementById('tl-carrier-sel')||{}).value||'';
   var carrierRef=((document.getElementById('tl-carrier-ref')||{}).value||'').trim();
   var carrierCost=parseFloat((document.getElementById('tl-carrier-cost')||{}).value)||0;
+  var ooId=(document.getElementById('tl-oo-sel')||{}).value||'';
+  var ooCost=parseFloat((document.getElementById('tl-oo-cost')||{}).value)||0;
   var pickupDate=((document.getElementById('tl-pickup-date')||{}).value||'');
   var pickupTime=((document.getElementById('tl-pickup-time')||{}).value||'');
   var delivDate=((document.getElementById('tl-delivery-date')||{}).value||'');
@@ -4044,7 +4054,9 @@ function tmsAddLoad(postToBoard){
   var newId='TOI-M'+(3923+_mCount+1);
   var ref='REF-'+(8800+Math.floor(Math.random()*100));
   var isOutsourced=assignMode==='outsource'&&carrierId;
+  var isOOLoad=assignMode==='ownerop'&&ooId;
   var carrierObj=isOutsourced?(D.carriers||[]).find(function(c){return c.id===carrierId;}):null;
+  var ooObj=isOOLoad?(D.ownerOperators||[]).find(function(o){return o.id===ooId;}):null;
   var load={
     id:newId,origin:orig,dest:dest,
     driver:drv||'Unassigned',truck:trk||'—',
@@ -4059,6 +4071,9 @@ function tmsAddLoad(postToBoard){
     assignedCarrierId:isOutsourced?carrierId:'',
     carrierName:carrierObj?carrierObj.companyName:'',
     carrierRef:carrierRef,carrierCost:carrierCost||0,
+    ownerOpId:isOOLoad?ooId:'',
+    ownerOpName:ooObj?(ooObj.name+(ooObj.company?' · '+ooObj.company:'')):'',
+    ownerOpCost:isOOLoad?ooCost:0,
     trackingEnabled:!!(trk),lastGpsLat:0,lastGpsLng:0,lastGpsTimestamp:'',gpsHeading:0,gpsSpeedKph:0,
     legs:[],isSplit:false,parentShipmentId:null,splitIndex:null,splitOf:null,
     paps:paps||'',
@@ -4084,7 +4099,7 @@ function tmsAddLoad(postToBoard){
   sfxSuccess();toast('Shipment created · '+newId+(postToBoard?' · Posted to board':''));
   var btn=document.querySelector('.tms-btn.primary');
   if(btn){var r=btn.getBoundingClientRect();burstAt(r.left+r.width/2,r.top+r.height/2,14,'78,240,196');}
-  if(!isOutsourced&&drv){tmsViewLoad(newId);setTimeout(function(){tmsShowDispatch(newId);},150);}else{tmsTransport();}
+  if(!isOutsourced&&!isOOLoad&&drv){tmsViewLoad(newId);setTimeout(function(){tmsShowDispatch(newId);},150);}else{tmsTransport();}
 }
 
 /* ─── PDF LOAD TENDER PARSER ─────────────────── */
@@ -4303,19 +4318,47 @@ function tmsViewLoad(id,tab){
   }
   /* ════ DISPATCH TAB ════ */
   else if(activeTab==='dispatch'){
+    var dispMode=l.ownerOpId?'ownerop':(l.assignedCarrierId?'outsource':'internal');
     var drvOpts=D.drivers.map(function(d){return'<option value="'+d.name+'"'+(d.name===l.driver?' selected':'')+'>'+d.name+(d.phone?' · '+d.phone:'')+'</option>';}).join('');
     var trkOpts=D.equipment.filter(function(e){return e.category==='Truck';}).map(function(e){var u=e.unit||e.id;return'<option value="'+u+'"'+(u===l.truck?' selected':'')+'>Unit '+u+' — '+e.make+(e.model?' '+e.model:'')+(e.year?' '+e.year:'')+'</option>';}).join('');
     var tri2Opts=D.equipment.filter(function(e){return e.category==='Trailer'&&(e.status==='Active'||e.status==='active');}).sort(function(a,b){return(a.unit||a.id).localeCompare(b.unit||b.id,undefined,{numeric:true});}).map(function(e){var u=e.unit||e.id;return'<option value="'+u+'"'+(u===l.trailer?' selected':'')+'>'+u+(e.type&&e.type!=='Dry Van'?' — '+e.type:'')+(e.plate?' ('+e.plate+')':'')+'</option>';}).join('');
-    content+='<div class="tms-form-grid" style="max-width:560px;margin-bottom:16px">'+
-      '<div><label class="tms-label">Driver</label><select class="tms-select" id="vl-driver"><option value="">Unassigned</option>'+drvOpts+'</select></div>'+
-      '<div><label class="tms-label">Truck (Unit #)</label><select class="tms-select" id="vl-truck"><option value="">TBD</option>'+trkOpts+'</select></div>'+
-      '<div class="tms-form-full"><label class="tms-label">Trailer</label><select class="tms-select" id="vl-trailer2"><option value="">TBD</option>'+tri2Opts+'</select></div>'+
+    var ooOpts2=(D.ownerOperators||[]).filter(function(o){return o.status==='active';}).map(function(oo){return'<option value="'+oo.id+'"'+(oo.id===l.ownerOpId?' selected':'')+'>'+oo.name+(oo.company?' · '+oo.company:'')+'</option>';}).join('');
+    var crrOpts2=(D.carriers||[]).filter(function(c){return c.status==='approved';}).map(function(c){return'<option value="'+c.id+'"'+(c.id===l.assignedCarrierId?' selected':'')+'>'+c.companyName+'</option>';}).join('');
+    var _abtn=function(m,lbl){var on=dispMode===m;return'<button id="vl-mode-'+m+'" onclick="tmsVLSetMode(\''+id+'\',\''+m+'\')" class="tms-btn" style="font-size:11px;padding:7px 14px;'+(on?'background:rgba(224,123,32,0.18);border-color:rgba(224,123,32,0.5);color:var(--accent)':'')+'">'+lbl+'</button>';};
+    content+=
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      _abtn('internal','🚛 Internal Driver')+
+      _abtn('ownerop','🧑‍💼 Owner Operator')+
+      _abtn('outsource','🤝 Outsource to Carrier')+
     '</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
-      '<button class="tms-btn" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:11px">📧 Send Dispatch Email</button>'+
-      (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'pay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
+    '<div id="vl-dispatch-internal" style="'+(dispMode!=='internal'?'display:none':'')+'">'+
+      '<div class="tms-form-grid" style="max-width:560px;margin-bottom:16px">'+
+        '<div><label class="tms-label">Driver</label><select class="tms-select" id="vl-driver"><option value="">Unassigned</option>'+drvOpts+'</select></div>'+
+        '<div><label class="tms-label">Truck (Unit #)</label><select class="tms-select" id="vl-truck"><option value="">TBD</option>'+trkOpts+'</select></div>'+
+        '<div class="tms-form-full"><label class="tms-label">Trailer</label><select class="tms-select" id="vl-trailer2"><option value="">TBD</option>'+tri2Opts+'</select></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
+        '<button class="tms-btn" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:11px">📧 Send Dispatch Email</button>'+
+        (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'pay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
+      '</div>'+
+      (l.dispatched?'<div style="font-size:11px;color:#63e682;margin-bottom:14px;background:rgba(99,230,130,0.08);border:0.5px solid rgba(99,230,130,0.2);border-radius:8px;padding:8px 12px">✓ Dispatched on '+l.dispatchDate+' → '+l.dispatchEmail+'</div>':'')+
     '</div>'+
-    (l.dispatched?'<div style="font-size:11px;color:#63e682;margin-bottom:14px;background:rgba(99,230,130,0.08);border:0.5px solid rgba(99,230,130,0.2);border-radius:8px;padding:8px 12px">✓ Dispatched on '+l.dispatchDate+' → '+l.dispatchEmail+'</div>':'')+
+    '<div id="vl-dispatch-ownerop" style="'+(dispMode!=='ownerop'?'display:none':'')+'">'+
+      '<div class="tms-form-grid" style="max-width:520px;margin-bottom:16px">'+
+        '<div class="tms-form-full"><label class="tms-label">Owner Operator</label><select class="tms-select" id="vl-oo"><option value="">— Select —</option>'+ooOpts2+'</select></div>'+
+        '<div><label class="tms-label">OO Pay ($)</label><input class="tms-input" id="vl-oo-cost" type="number" value="'+(l.ownerOpCost||'')+'"></div>'+
+      '</div>'+
+      '<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'oopay\')" style="font-size:11px;margin-bottom:14px;border-color:rgba(130,100,255,0.4);color:#9b7fff">💰 OO Pay</button>'+
+    '</div>'+
+    '<div id="vl-dispatch-outsource" style="'+(dispMode!=='outsource'?'display:none':'')+'">'+
+      '<div class="tms-form-grid" style="max-width:520px;margin-bottom:16px">'+
+        '<div class="tms-form-full"><label class="tms-label">Carrier</label><select class="tms-select" id="vl-carrier2"><option value="">— Select Carrier —</option>'+crrOpts2+'</select></div>'+
+        '<div><label class="tms-label">Carrier Rate ($)</label><input class="tms-input" id="vl-carrier-rate2" type="number" value="'+(l.carrierCost||'')+'"></div>'+
+        '<div><label class="tms-label">Carrier Ref #</label><input class="tms-input" id="vl-carrier-ref2" value="'+(l.carrierRef||'')+'"></div>'+
+      '</div>'+
+      (l.assignedCarrierId?'<button class="tms-btn" onclick="tmsRateConfirmation(\''+id+'\')" style="margin-bottom:14px;font-size:11px">📄 Download Rate Confirmation</button><br>':'')+
+    '</div>'+
+    '<input type="hidden" id="vl-dispatch-mode" value="'+dispMode+'">'+
     '<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:4px">💾 Save Changes</button>';
   }
   /* ════ OUTSOURCE TAB ════ */
@@ -4349,6 +4392,15 @@ function _readCurrentStopFields(l){
     s.temp=g('temp')||s.temp||'';
     s.unitType=g('unit')||s.unitType||'';
     s.note=g('note')||s.note||'';
+  });
+}
+
+function tmsVLSetMode(loadId,mode){
+  document.getElementById('vl-dispatch-mode').value=mode;
+  ['internal','ownerop','outsource'].forEach(function(m){
+    var panel=document.getElementById('vl-dispatch-'+m);if(panel)panel.style.display=m===mode?'':'none';
+    var btn=document.getElementById('vl-mode-'+m);
+    if(btn){btn.style.background=m===mode?'rgba(224,123,32,0.18)':'';btn.style.borderColor=m===mode?'rgba(224,123,32,0.5)':'';btn.style.color=m===mode?'var(--accent)':(''||btn.style.color.includes('#')?'':'');}
   });
 }
 
@@ -4403,9 +4455,29 @@ function tmsSaveLoadInline(id){
     l.declaredValue=vf('vl-value2');
     if(l.assignedCarrierId)l.carrierCost=vf('vl-carrier-cost');
   }else if(tab==='dispatch'){
-    var nd=v('vl-driver');if(nd)l.driver=nd;
-    var nt=v('vl-truck');if(nt)l.truck=nt;
-    var ntr=v('vl-trailer2');if(ntr)l.trailer=ntr;
+    var dispMode=v('vl-dispatch-mode')||'internal';
+    if(dispMode==='internal'){
+      var nd=v('vl-driver');if(nd)l.driver=nd;
+      var nt=v('vl-truck');if(nt)l.truck=nt;
+      var ntr=v('vl-trailer2');if(ntr)l.trailer=ntr;
+      l.ownerOpId='';l.ownerOpName='';l.ownerOpCost=0;
+      l.assignedCarrierId='';l.carrierName='';
+    }else if(dispMode==='ownerop'){
+      var ooid=v('vl-oo');
+      var ooobj=ooid?(D.ownerOperators||[]).find(function(o){return o.id===ooid;}):null;
+      l.ownerOpId=ooid;
+      l.ownerOpName=ooobj?(ooobj.name+(ooobj.company?' · '+ooobj.company:'')):'';
+      l.ownerOpCost=vf('vl-oo-cost');
+      l.assignedCarrierId='';l.carrierName='';
+    }else if(dispMode==='outsource'){
+      var cid2=v('vl-carrier2');
+      var cobj2=cid2?(D.carriers||[]).find(function(c){return c.id===cid2;}):null;
+      l.assignedCarrierId=cid2;
+      l.carrierName=cobj2?cobj2.companyName:'';
+      l.carrierCost=vf('vl-carrier-rate2');
+      l.carrierRef=v('vl-carrier-ref2');
+      l.ownerOpId='';l.ownerOpName='';l.ownerOpCost=0;
+    }
   }else if(tab==='outsource'){
     var cid=v('vl-carrier');
     var cobj=cid?(D.carriers||[]).find(function(c){return c.id===cid;}):null;
@@ -7394,6 +7466,12 @@ function tmsUpdateStatus(loadId,status){
       if(dObj.payLog){var pl=dObj.payLog.find(function(e){return e.loadId===loadId;});if(pl){pl.status='paid';pl.paidDate=new Date().toLocaleDateString();}}
       dObj.status='Available';dObj.load=null;
     }
+    /* Stamp OO pay for weekly tracking */
+    if(load.ownerOpId&&!load.ownerOpCost&&load.revenue){
+      var ooRef=(D.ownerOperators||[]).find(function(o){return o.id===load.ownerOpId;});
+      var ooRate=ooRef?((ooRef.payRate||0)/100):0;
+      if(ooRate>0)load.ownerOpCost=Math.round(load.revenue*ooRate);
+    }
     D.finances.revenue=(D.finances.revenue||0)+load.revenue;
     _markLoadPendingInvoice(load);
   }
@@ -7663,6 +7741,239 @@ function tmsGetBestCarrier(loadType,orig,dest){
   });
   scored.sort(function(a,b){return b.matchScore-a.matchScore;});
   return scored[0]||null;
+}
+
+/* ══════════════════════════════════════════
+   OWNER OPERATORS
+══════════════════════════════════════════ */
+function tmsOwnerOps(){
+  var D=window.TMS_DATA;
+  if(!D.ownerOperators)D.ownerOperators=[];
+  var rows=D.ownerOperators.length?D.ownerOperators.map(function(oo,i){
+    var statusColor=oo.status==='active'?'green':'red';
+    return '<div class="tms-fleet-card" style="position:relative">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'+
+        '<div><div style="font-size:14px;font-weight:500;color:var(--text)">'+oo.name+'</div>'+
+          (oo.company?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+oo.company+'</div>':'')+
+        '</div>'+
+        '<span class="tms-badge '+statusColor+'" style="font-size:8px">'+oo.status+'</span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+oo.phone+'</div>'+
+      (oo.email?'<div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+oo.email+'</div>':'')+
+      (oo.mcNumber?'<div style="font-size:10px;color:var(--text3)">MC# '+oo.mcNumber+'</div>':'')+
+      '<div style="margin-top:8px;display:flex;align-items:center;gap:6px">'+
+        '<span style="font-size:10px;color:var(--text3)">Pay rate:</span>'+
+        '<input class="tms-input" id="oo-rate-'+i+'" type="number" value="'+(oo.payRate||0)+'" style="width:60px;padding:3px 6px;font-size:11px">'+
+        '<span style="font-size:10px;color:var(--text3)">% of rev</span>'+
+        '<button class="tms-btn sm" onclick="tmsUpdateOORate('+i+')">Save</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;margin-top:10px">'+
+        '<button class="tms-btn sm" onclick="tmsToggleOOStatus('+i+')">'+(oo.status==='active'?'Deactivate':'Activate')+'</button>'+
+        '<button class="tms-btn sm danger" onclick="tmsRemoveOO('+i+')">Remove</button>'+
+      '</div>'+
+    '</div>';
+  }).join(''):'<div style="font-size:13px;color:var(--text3);padding:20px 0">No owner operators yet. Add one below.</div>';
+
+  document.getElementById('tms-body').innerHTML=
+  '<div class="tms-section-title">Owner Operators</div>'+
+  '<div class="tms-sub-note">Owner operators use their own trucks. Assign them to loads from the Dispatch tab. Their pay is tracked weekly under Fleet → OO Pay.</div>'+
+  '<div class="tms-fleet-grid" style="margin-bottom:20px">'+rows+'</div>'+
+  '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:18px;max-width:600px">'+
+    '<div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:14px">Add Owner Operator</div>'+
+    '<div class="tms-form-grid">'+
+      '<div><label class="tms-label">Full Name ✱</label><input class="tms-input" id="oo-name" placeholder="Jean Tremblay"></div>'+
+      '<div><label class="tms-label">Company</label><input class="tms-input" id="oo-company" placeholder="Tremblay Transport Inc."></div>'+
+      '<div><label class="tms-label">Phone</label><input class="tms-input" id="oo-phone" placeholder="514-555-1234"></div>'+
+      '<div><label class="tms-label">Email</label><input class="tms-input" id="oo-email" type="email" placeholder="jean@example.com"></div>'+
+      '<div><label class="tms-label">MC Number</label><input class="tms-input" id="oo-mc" placeholder="MC-123456"></div>'+
+      '<div><label class="tms-label">Pay Rate (%)</label><input class="tms-input" id="oo-payrate" type="number" value="75" placeholder="75"></div>'+
+    '</div>'+
+    '<button class="tms-btn primary" style="margin-top:12px" onclick="tmsAddOO()">Add Owner Operator</button>'+
+  '</div>';
+}
+function tmsAddOO(){
+  var D=window.TMS_DATA;
+  if(!D.ownerOperators)D.ownerOperators=[];
+  var name=(document.getElementById('oo-name')||{}).value||'';
+  if(!name){sfxError();toast('Name is required');return;}
+  D.ownerOperators.push({
+    id:'OO-'+Date.now(),
+    name:name,
+    company:(document.getElementById('oo-company')||{}).value||'',
+    phone:(document.getElementById('oo-phone')||{}).value||'',
+    email:(document.getElementById('oo-email')||{}).value||'',
+    mcNumber:(document.getElementById('oo-mc')||{}).value||'',
+    payRate:parseFloat((document.getElementById('oo-payrate')||{}).value)||75,
+    status:'active'
+  });
+  _fbPushTMS();sfxSuccess();toast('Owner operator added');tmsOwnerOps();
+}
+function tmsUpdateOORate(idx){
+  var D=window.TMS_DATA;
+  var oo=D.ownerOperators[idx];if(!oo)return;
+  var r=parseFloat((document.getElementById('oo-rate-'+idx)||{}).value)||0;
+  oo.payRate=r;
+  _fbPushTMS();sfxSuccess();toast('Pay rate updated → '+r+'%');tmsOwnerOps();
+}
+function tmsToggleOOStatus(idx){
+  var D=window.TMS_DATA;
+  var oo=D.ownerOperators[idx];if(!oo)return;
+  oo.status=oo.status==='active'?'inactive':'active';
+  _fbPushTMS();sfxSuccess();toast(oo.name+' → '+oo.status);tmsOwnerOps();
+}
+function tmsRemoveOO(idx){
+  var D=window.TMS_DATA;
+  if(!D.ownerOperators||!D.ownerOperators[idx])return;
+  D.ownerOperators.splice(idx,1);
+  _fbPushTMS();sfxPop();toast('Owner operator removed');tmsOwnerOps();
+}
+
+/* ══════════════════════════════════════════
+   OO PAY — weekly earnings for owner operators
+══════════════════════════════════════════ */
+function tmsOOPay(){
+  var D=window.TMS_DATA;
+  if(!D.ownerOpWeekPaid)D.ownerOpWeekPaid={};
+  var now=new Date();
+  var curWeekStart=_dpWeekStart(now);
+  if(!window._ooWeekTs)window._ooWeekTs=curWeekStart.getTime();
+  var weekStart=new Date(window._ooWeekTs);
+  var weekEnd=new Date(weekStart);weekEnd.setDate(weekStart.getDate()+6);weekEnd.setHours(23,59,59,999);
+  var selectedWN=_dpWeekNum(weekStart);
+  var selectedYr=weekStart.getFullYear();
+  var isCurrent=weekStart.getTime()===curWeekStart.getTime();
+  var fmt=function(d){return d.toLocaleDateString(undefined,{month:'short',day:'numeric'});};
+
+  /* Pre-compute badge data for tabs */
+  var weekCounts={};var weekPays={};
+  D.loads.forEach(function(l){
+    if(!l.ownerOpId)return;
+    if(l.status!=='Delivered'&&l.status!=='DELIVERED')return;
+    var d=_dpParseDate(l.deliveredDate)||_dpParseDate(l.date);if(!d)return;
+    var k=_dpWeekStart(d).toISOString().slice(0,10);
+    weekCounts[k]=(weekCounts[k]||0)+1;
+    weekPays[k]=(weekPays[k]||0)+(l.ownerOpCost||0);
+  });
+
+  /* Loads for selected week */
+  var weekLoads=D.loads.filter(function(l){
+    if(!l.ownerOpId)return false;
+    if(l.status!=='Delivered'&&l.status!=='DELIVERED')return false;
+    var d=_dpParseDate(l.deliveredDate)||_dpParseDate(l.date);
+    return d&&d>=weekStart&&d<=weekEnd;
+  });
+
+  /* Group by ownerOpId */
+  var ooMap={};
+  weekLoads.forEach(function(l){
+    var key=l.ownerOpId;
+    if(!ooMap[key])ooMap[key]={name:l.ownerOpName||l.ownerOpId,loads:[],total:0};
+    var pay=l.ownerOpCost||0;
+    var orig=(l.origin||'').split(',')[0];var dst=(l.dest||'').split(',')[0];
+    ooMap[key].loads.push({id:l.id,route:orig+' → '+dst,revenue:l.revenue||0,pay:pay,date:l.deliveredDate||l.date||''});
+    ooMap[key].total+=pay;
+  });
+  var totalPay=Object.keys(ooMap).reduce(function(s,k){return s+ooMap[k].total;},0);
+  var totalLoads=weekLoads.length;
+  var ooCount=Object.keys(ooMap).length;
+
+  var html='';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">';
+  html+='<div class="tms-section-title" style="margin:0">OO Pay</div>';
+  html+='<div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:0.5px solid var(--border);border-radius:10px;padding:6px 10px">';
+  html+='<span style="font-size:10px;color:var(--text3);letter-spacing:0.06em;white-space:nowrap">WEEK</span>';
+  html+='<input id="oo-wnum" class="tms-input" type="number" min="1" max="53" value="'+selectedWN+'" style="width:52px;padding:4px 6px;font-size:13px;text-align:center" onkeydown="if(event.key===\'Enter\')_ooJumpWeek()">';
+  html+='<span style="font-size:10px;color:var(--text3)">of</span>';
+  html+='<input id="oo-yr" class="tms-input" type="number" min="2020" max="2040" value="'+selectedYr+'" style="width:68px;padding:4px 6px;font-size:13px;text-align:center" onkeydown="if(event.key===\'Enter\')_ooJumpWeek()">';
+  html+='<button class="tms-btn sm primary" onclick="_ooJumpWeek()" style="padding:4px 12px;font-size:11px">Go</button>';
+  if(!isCurrent)html+='<button class="tms-btn sm" onclick="_ooGoWeek('+curWeekStart.getTime()+')" style="padding:4px 10px;font-size:11px">Today</button>';
+  html+='</div></div>';
+
+  /* Quick tabs: last 8 weeks */
+  html+='<div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;scrollbar-width:thin;-webkit-overflow-scrolling:touch">';
+  for(var w=0;w>=-7;w--){
+    var ws=new Date(curWeekStart);ws.setDate(curWeekStart.getDate()+w*7);ws.setHours(0,0,0,0);
+    var we=new Date(ws);we.setDate(ws.getDate()+6);
+    var tk=ws.toISOString().slice(0,10);
+    var tCount=weekCounts[tk]||0;var tPay=weekPays[tk]||0;
+    var wn=_dpWeekNum(ws);
+    var isActive=ws.getTime()===weekStart.getTime();
+    var lbl=w===0?'This Week':w===-1?'Last Week':'W'+wn;
+    var dateLbl=fmt(ws)+' – '+fmt(we);
+    html+='<button onclick="_ooGoWeek('+ws.getTime()+')" style="flex-shrink:0;padding:8px 12px;border-radius:9px;border:0.5px solid '+(isActive?'var(--accent)':'var(--border)')+';background:'+(isActive?'rgba(224,123,32,0.1)':'var(--surface2)')+';color:'+(isActive?'var(--accent)':'var(--text2)')+';cursor:pointer;font-family:inherit;text-align:left;transition:all 0.15s;min-width:90px">';
+    html+='<div style="font-size:11px;font-weight:'+(isActive?'500':'400')+';white-space:nowrap">'+lbl+'</div>';
+    html+='<div style="font-size:9px;color:'+(isActive?'rgba(224,123,0.65)':'var(--text3)')+';margin-top:1px;white-space:nowrap">'+dateLbl+'</div>';
+    html+=(tCount>0?'<div style="margin-top:4px;font-size:9px;color:'+(isActive?'var(--accent)':'var(--text3)')+'">'+tCount+' load'+(tCount!==1?'s':'')+' · $'+tPay.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>':
+      '<div style="margin-top:4px;font-size:9px;color:var(--text3);opacity:0.35">no loads</div>');
+    html+='</button>';
+  }
+  html+='</div>';
+
+  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:16px">'+
+    '<span style="color:var(--accent2);font-weight:500">Week '+selectedWN+', '+selectedYr+'</span>'+
+    ' · '+fmt(weekStart)+' – '+fmt(weekEnd)+
+    (isCurrent?' <span style="font-size:10px;background:rgba(245,166,35,0.12);color:var(--accent2);border-radius:4px;padding:2px 7px;margin-left:4px">current</span>':'')+
+  '</div>';
+
+  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;max-width:520px">';
+  html+='<div style="background:rgba(130,100,255,0.08);border:0.5px solid rgba(130,100,255,0.25);border-radius:12px;padding:14px 16px;text-align:center"><div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#9b7fff;margin-bottom:6px">Total Pay</div><div style="font-size:26px;font-weight:300;color:var(--text)">$'+totalPay.toLocaleString(undefined,{maximumFractionDigits:0})+'</div></div>';
+  html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center"><div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Loads</div><div style="font-size:26px;font-weight:300;color:var(--text)">'+totalLoads+'</div></div>';
+  html+='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px;text-align:center"><div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">OOs</div><div style="font-size:26px;font-weight:300;color:var(--text)">'+ooCount+'</div></div>';
+  html+='</div>';
+
+  var weekKey=weekStart.toISOString().slice(0,10);
+  if(ooCount===0){
+    html+='<div style="font-size:13px;color:var(--text3);padding:28px 0;border:0.5px dashed var(--border);border-radius:12px;text-align:center">No OO loads delivered in Week '+selectedWN+', '+selectedYr+'.<br><span style="font-size:11px;opacity:0.6">Assign an owner operator to a load and mark it Delivered.</span></div>';
+  }else{
+    html+='<div style="display:flex;flex-direction:column;gap:14px;margin-bottom:20px">';
+    Object.keys(ooMap).sort().forEach(function(ooid){
+      var op=ooMap[ooid];
+      var paidKey=ooid+'_'+weekKey;
+      var isPaid=!!(D.ownerOpWeekPaid[paidKey]);
+      var paidEntry=D.ownerOpWeekPaid[paidKey];
+      html+='<div style="background:var(--surface);border:0.5px solid '+(isPaid?'rgba(99,230,130,0.22)':'rgba(130,100,255,0.22)')+';border-radius:12px;overflow:hidden">';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:0.5px solid var(--border)">';
+      html+='<div><div style="font-size:14px;font-weight:500;color:var(--text)">'+op.name+'</div><div style="font-size:10px;color:var(--text3);margin-top:2px">'+op.loads.length+' load'+(op.loads.length!==1?'s':'')+'</div></div>';
+      html+='<div style="text-align:right"><div style="font-size:22px;font-weight:300;color:#9b7fff">$'+op.total.toLocaleString(undefined,{maximumFractionDigits:0})+'</div>'+(isPaid?'<div style="font-size:9px;color:#63e682;letter-spacing:0.05em">✓ Paid '+paidEntry.paidDate+'</div>':'<span class="tms-badge purple" style="font-size:8px">Unpaid</span>')+'</div>';
+      html+='</div>';
+      html+='<div style="overflow-x:auto"><table class="tms-table" style="min-width:520px"><thead><tr><th class="tms-th">Load ID</th><th class="tms-th">Route</th><th class="tms-th">Revenue</th><th class="tms-th">OO Pay</th><th class="tms-th">Date</th></tr></thead><tbody>';
+      op.loads.forEach(function(ld){
+        html+='<tr class="tms-tr"><td class="tms-td" style="color:var(--accent);font-size:11px">'+ld.id+'</td><td class="tms-td" style="font-size:10px;color:var(--text3);max-width:200px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+ld.route+'</div></td><td class="tms-td" style="font-size:11px">$'+ld.revenue.toLocaleString()+'</td><td class="tms-td" style="color:#9b7fff;font-weight:500">$'+ld.pay.toLocaleString(undefined,{maximumFractionDigits:0})+'</td><td class="tms-td" style="font-size:10px;color:var(--text3)">'+ld.date+'</td></tr>';
+      });
+      html+='</tbody></table></div>';
+      if(!isPaid){
+        html+='<div style="padding:10px 16px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:10px"><button style="background:rgba(130,100,255,0.15);border:0.5px solid rgba(130,100,255,0.4);color:#9b7fff;border-radius:8px;padding:8px 16px;font-size:11px;cursor:pointer;font-family:inherit" onclick="tmsMarkOOPaidWeek(\''+ooid.replace(/'/g,"\\'")+'\','+weekStart.getTime()+','+weekEnd.getTime()+')">Mark $'+op.total.toLocaleString(undefined,{maximumFractionDigits:0})+' Paid</button><span style="font-size:10px;color:var(--text3)">Records payment for this week</span></div>';
+      }
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+  document.getElementById('tms-body').innerHTML=html;
+}
+function _ooGoWeek(ts){window._ooWeekTs=ts;tmsOOPay();}
+function _ooJumpWeek(){
+  var wn=parseInt((document.getElementById('oo-wnum')||{}).value)||1;
+  var yr=parseInt((document.getElementById('oo-yr')||{}).value)||new Date().getFullYear();
+  var jan1=new Date(yr,0,1);
+  var firstSun=new Date(jan1);firstSun.setDate(jan1.getDate()-jan1.getDay());
+  var target=new Date(firstSun);target.setDate(firstSun.getDate()+(wn-1)*7);
+  window._ooWeekTs=target.getTime();tmsOOPay();
+}
+function tmsMarkOOPaidWeek(ooid,weekStartTs,weekEndTs){
+  var D=window.TMS_DATA;
+  if(!D.ownerOpWeekPaid)D.ownerOpWeekPaid={};
+  var weekStart=new Date(weekStartTs);var weekEnd=new Date(weekEndTs);
+  var key=ooid+'_'+weekStart.toISOString().slice(0,10);
+  var weekLoads=D.loads.filter(function(l){
+    if(l.ownerOpId!==ooid)return false;
+    if(l.status!=='Delivered'&&l.status!=='DELIVERED')return false;
+    var d=_dpParseDate(l.deliveredDate)||_dpParseDate(l.date);
+    return d&&d>=weekStart&&d<=weekEnd;
+  });
+  var total=weekLoads.reduce(function(s,l){return s+(l.ownerOpCost||0);},0);
+  D.ownerOpWeekPaid[key]={paidDate:new Date().toLocaleDateString(),amount:total};
+  _fbPushTMS();sfxSuccess();toast('Paid · $'+total.toLocaleString(undefined,{maximumFractionDigits:0}));
+  tmsOOPay();
 }
 
 function tmsCarriers(){
@@ -8172,6 +8483,8 @@ window.TMS_DATA={
   driverPayRate:28,
   payRates:{localDelivery:45,ltlCityLeg:65,ftlCityLeg:120,usHaulFlat:350,terminalBonus:25},
   carriers:[],
+  ownerOperators:[],
+  ownerOpWeekPaid:{},
   terminals:[
     {id:'TERM-LAV',name:'Laval Terminal',address:'2907 Bd Dagenais, Laval, QC H7P 1T2',city:'Laval',lat:45.5746,lng:-73.7220,isTerminal:true},
     {id:'TERM-CAN',name:'Candiac Terminal',address:'3025 Bd Taschereau, La Prairie, QC J5R 5S6',city:'La Prairie',lat:45.4215,lng:-73.4985,isTerminal:true},
@@ -9759,14 +10072,22 @@ function tmsSelectTerminalDest(sel){
 function tmsAssignModeChange(){tmsSetAssignMode((document.getElementById('tl-assign-mode')||{}).value||'internal');}
 function tmsSetAssignMode(mode){
   var modeInput=document.getElementById('tl-assign-mode');if(modeInput)modeInput.value=mode;
-  var outsource=mode==='outsource';
-  ['tl-driver-wrap','tl-driver-wrap2'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=outsource?'none':'';});
-  ['tl-carrier-wrap','tl-carrier-cost-wrap','tl-carrier-ref-wrap'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=outsource?'':'none';});
-  var btnInt=document.getElementById('tl-mode-internal');var btnOut=document.getElementById('tl-mode-outsource');
-  if(btnInt){btnInt.style.background=outsource?'':'rgba(224,123,32,0.18)';btnInt.style.borderColor=outsource?'':'rgba(224,123,32,0.5)';}
-  if(btnOut){btnOut.style.background=outsource?'rgba(224,123,32,0.18)':'';btnOut.style.borderColor=outsource?'rgba(224,123,32,0.5)':'';}
-  /* Populate carrier dropdown */
-  if(outsource){var sel=document.getElementById('tl-carrier-sel');if(sel&&sel.options.length<=1){var D=window.TMS_DATA;(D.carriers||[]).filter(function(c){return c.status==='approved';}).forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.companyName||c.name||c.id;sel.appendChild(o);});}}
+  var isInternal=mode==='internal';
+  var isOO=mode==='ownerop';
+  var isOutsource=mode==='outsource';
+  ['tl-driver-wrap','tl-driver-wrap2'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=isInternal?'':'none';});
+  ['tl-oo-wrap','tl-oo-cost-wrap'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=isOO?'':'none';});
+  ['tl-carrier-wrap','tl-carrier-cost-wrap','tl-carrier-ref-wrap'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=isOutsource?'':'none';});
+  var accent='rgba(224,123,32,0.18)';var accentBorder='rgba(224,123,32,0.5)';
+  var btnInt=document.getElementById('tl-mode-internal');
+  var btnOO=document.getElementById('tl-mode-ownerop');
+  var btnOut=document.getElementById('tl-mode-outsource');
+  if(btnInt){btnInt.style.background=isInternal?accent:'';btnInt.style.borderColor=isInternal?accentBorder:'';}
+  if(btnOO){btnOO.style.background=isOO?accent:'';btnOO.style.borderColor=isOO?accentBorder:'';}
+  if(btnOut){btnOut.style.background=isOutsource?accent:'';btnOut.style.borderColor=isOutsource?accentBorder:'';}
+  /* Populate dropdowns on first open */
+  if(isOutsource){var sel=document.getElementById('tl-carrier-sel');if(sel&&sel.options.length<=1){var D=window.TMS_DATA;(D.carriers||[]).filter(function(c){return c.status==='approved';}).forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.companyName||c.name||c.id;sel.appendChild(o);});}}
+  if(isOO){var ooSel=document.getElementById('tl-oo-sel');if(ooSel&&ooSel.options.length<=1){var D=window.TMS_DATA;(D.ownerOperators||[]).filter(function(o){return o.status==='active';}).forEach(function(oo){var opt=document.createElement('option');opt.value=oo.id;opt.textContent=oo.name+(oo.company?' · '+oo.company:'');ooSel.appendChild(opt);});}}
 }
 
 /* Calculate estimated driver pay based on shipment type / direction */
