@@ -3766,8 +3766,9 @@ function tmsTransport(){
   var truckOpts=D.equipment.filter(function(e){return (e.category==='Truck'||e.type==='Truck');}).map(function(e){return '<option value="'+(e.unit||e.id)+'">Unit '+(e.unit||e.id)+' · '+e.make+(e.model?' '+e.model:'')+(e.year?' '+e.year:'')+' ('+e.plate+')</option>';}).join('');
   var custOpts='<option value="">— Select customer —</option>'+(D.customers||[]).map(function(c){return '<option value="'+c.name+'">'+c.name+(c.company?' · '+c.company:'')+'</option>';}).join('');
   var sc={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
-  var activeLds=D.loads.filter(function(l){return !l.past;});
-  var histLds=D.loads.filter(function(l){return !!l.past;});
+  var activeLds=D.loads.filter(function(l){return !l.past&&!l.assignedCarrierId;});
+  var histLds=D.loads.filter(function(l){return !!l.past&&!l.assignedCarrierId;});
+  var outsourcedCount=D.loads.filter(function(l){return !!l.assignedCarrierId;}).length;
   var shownLoads=_tmsShowHistory?histLds:activeLds;
   var TMS_STATUS_COLORS={'ASSIGNED':'purple','EN_ROUTE_PICKUP':'blue','ARRIVED_PICKUP':'yellow','LOADED':'yellow','IN_TRANSIT':'purple','ARRIVED_DELIVERY':'blue','DELIVERED':'green','DELAYED':'red','AT_TERMINAL':'blue','In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
   var loadRows=shownLoads.map(function(l){
@@ -3807,28 +3808,36 @@ function tmsTransport(){
   '<div id="tl-type-gate" style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.15);border-radius:8px;padding:12px;font-size:11px;color:var(--text3);margin-bottom:10px;display:block">Select a Type and Direction above to continue.</div>'+
   '<div id="tl-details-section" style="display:none">'+
   '<div class="tms-form-grid">'+
-  '<div class="tms-form-full"><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC, Costco"></div>'+
+  '<div><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC, Costco"></div>'+
+  '<div><label class="tms-label">Pickup Phone</label><input class="tms-input" id="tl-pickup-phone" placeholder="e.g. 514-555-0100"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Pickup Address</label><input class="tms-input" id="tl-orig" placeholder="e.g. 123 King St W, Toronto, ON" onchange="tmsAutoRoute()"></div>'+
-  '<div class="tms-form-full"><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot, Amazon FC"></div>'+
+  '<div><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot, Amazon FC"></div>'+
+  '<div><label class="tms-label">Delivery Phone</label><input class="tms-input" id="tl-delivery-phone" placeholder="e.g. 312-555-0200"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Delivery Address</label>'+
   '<div style="display:flex;gap:6px"><input class="tms-input" id="tl-dest" placeholder="e.g. 456 Michigan Ave, Chicago, IL" onchange="tmsAutoRoute()" style="flex:1"><select class="tms-select" id="tl-terminal-dest" onchange="tmsSelectTerminalDest(this)" style="flex:0 0 auto;max-width:160px"><option value="">Or Terminal ↓</option></select></div>'+
   '</div>'+
   '<div id="tl-route-info" style="grid-column:1/-1;display:none;background:rgba(245,166,35,0.06);border:0.5px solid rgba(245,166,35,0.2);border-radius:8px;padding:10px;font-size:11px;color:var(--text2)"></div>'+
   '<div><label class="tms-label">Trailer Type</label><select class="tms-select" id="tl-trailer"><option>Dry Van 53\'</option><option>Reefer 53\'</option><option>Flatbed 53\'</option><option>Step Deck</option><option>Container 40\'</option><option>Container 20\'</option></select></div>'+
-  '<div><label class="tms-label">Driver Assignment</label>'+
-  '<div style="display:flex;gap:6px;align-items:center"><select class="tms-select" id="tl-assign-mode" onchange="tmsAssignModeChange()" style="flex:0 0 auto;width:160px"><option value="internal">Internal Driver</option><option value="outsource">Outsource to Carrier</option></select>'+
-  '<select class="tms-select" id="tl-drv" style="flex:1"><option value="">Unassigned</option>'+driverOpts+'</select>'+
-  '<select class="tms-select" id="tl-carrier-sel" style="flex:1;display:none"><option value="">— Select Carrier —</option></select>'+
+  '<div class="tms-form-full"><label class="tms-label">Assignment</label>'+
+  '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+  '<button id="tl-mode-internal" class="tms-btn primary" onclick="tmsSetAssignMode(\'internal\')" style="font-size:11px;padding:7px 16px">🚛 Internal Driver</button>'+
+  '<button id="tl-mode-outsource" class="tms-btn" onclick="tmsSetAssignMode(\'outsource\')" style="font-size:11px;padding:7px 16px">🤝 Outsource to Carrier</button>'+
+  '<input type="hidden" id="tl-assign-mode" value="internal">'+
   '</div></div>'+
-  '<div><label class="tms-label">Truck</label><select class="tms-select" id="tl-trk"><option value="">TBD</option>'+truckOpts+'</select></div>'+
+  '<div id="tl-driver-wrap"><label class="tms-label">Driver</label><select class="tms-select" id="tl-drv"><option value="">Unassigned</option>'+driverOpts+'</select></div>'+
+  '<div id="tl-driver-wrap2"><label class="tms-label">Truck</label><select class="tms-select" id="tl-trk"><option value="">TBD</option>'+truckOpts+'</select></div>'+
+  '<div id="tl-carrier-wrap" style="display:none"><label class="tms-label">Carrier</label><select class="tms-select" id="tl-carrier-sel"><option value="">— Select Carrier —</option></select></div>'+
+  '<div id="tl-carrier-cost-wrap" style="display:none"><label class="tms-label">Carrier Rate ($)</label><input class="tms-input" id="tl-carrier-cost" type="number" placeholder="e.g. 2800"></div>'+
+  '<div id="tl-carrier-ref-wrap" style="display:none"><label class="tms-label">Carrier Ref #</label><input class="tms-input" id="tl-carrier-ref" placeholder="e.g. RC-10284"></div>'+
   '<div><label class="tms-label">Trailer #</label><input class="tms-input" id="tl-trailer-id" placeholder="e.g. T-101"></div>'+
   '<div><label class="tms-label">Weight (lbs)</label><input class="tms-input" id="tl-wgt" placeholder="e.g. 42000" type="number"></div>'+
   '<div><label class="tms-label">Commodity</label><input class="tms-input" id="tl-com" placeholder="e.g. Electronics"></div>'+
   '<div><label class="tms-label">Customer</label><div style="display:flex;gap:6px;align-items:center"><select class="tms-select" id="tl-cust" style="flex:1">'+custOpts+'</select><button class="tms-btn sm" onclick="tmsTab(\'customers\')" style="white-space:nowrap;flex-shrink:0">+ New</button></div></div>'+
   '<div><label class="tms-label">Revenue ($)</label><input class="tms-input" id="tl-rev" type="number" placeholder="3400"></div>'+
-  '<div><label class="tms-label">Carrier Ref # / Cost</label><input class="tms-input" id="tl-carrier-ref" placeholder="Carrier ref # and quoted rate" style="display:none"></div>'+
   '<div><label class="tms-label">Pickup Date</label><input class="tms-input" id="tl-pickup-date" type="date"></div>'+
+  '<div><label class="tms-label">Pickup Time</label><input class="tms-input" id="tl-pickup-time" type="time"></div>'+
   '<div><label class="tms-label">Delivery Date</label><input class="tms-input" id="tl-delivery-date" type="date"></div>'+
+  '<div><label class="tms-label">Delivery Time</label><input class="tms-input" id="tl-delivery-time" type="time"></div>'+
   '<div><label class="tms-label">PAPS Number <span style="color:var(--text3);font-size:9px">(optional)</span></label><input class="tms-input" id="tl-paps" placeholder="e.g. MACT00003205"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Special Instructions</label><input class="tms-input" id="tl-notes" placeholder="Hazmat, temp req, etc."></div>'+
   '<div id="tl-carrier-rec" style="display:none"></div>'+
@@ -3843,7 +3852,8 @@ function tmsTransport(){
   '<div>'+
   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
   '<div class="tms-section-title" style="margin-bottom:0">'+(_tmsShowHistory?'Past Loads ('+histLds.length+')':'Active Loads ('+activeLds.length+')')+'</div>'+
-  '<div style="display:flex;gap:6px">'+
+  '<div style="display:flex;gap:6px;align-items:center">'+
+  (outsourcedCount?'<button class="tms-btn sm" onclick="_tmsDispatch(\'logistics\')" style="font-size:10px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">🚚 Outsourced ('+outsourcedCount+')</button>':'')+
   '<button class="tms-btn sm" onclick="tmsShowTrips()" style="border-color:rgba(245,166,35,0.4);color:var(--accent2)">🚛 Trips</button>'+
   '<button class="tms-btn sm" onclick="_tmsShowHistory=false;tmsTransport()" style="'+ (!_tmsShowHistory?'background:rgba(224,123,32,0.18);border-color:rgba(224,123,32,0.5)':'')+'">Active</button>'+
   '<button class="tms-btn sm" onclick="_tmsShowHistory=true;tmsTransport()" style="'+(_tmsShowHistory?'background:rgba(245,166,35,0.12);border-color:rgba(245,166,35,0.4)':'')+'">History ('+histLds.length+')</button>'+
@@ -4018,11 +4028,16 @@ function tmsAddLoad(postToBoard){
   var trailerId=((document.getElementById('tl-trailer-id')||{}).value||'').trim();
   var notes=((document.getElementById('tl-notes')||{}).value||'').trim();
   var paps=((document.getElementById('tl-paps')||{}).value||'').trim();
+  var pickupPhone=((document.getElementById('tl-pickup-phone')||{}).value||'').trim();
+  var delivPhone=((document.getElementById('tl-delivery-phone')||{}).value||'').trim();
   var assignMode=(document.getElementById('tl-assign-mode')||{}).value||'internal';
   var carrierId=(document.getElementById('tl-carrier-sel')||{}).value||'';
   var carrierRef=((document.getElementById('tl-carrier-ref')||{}).value||'').trim();
+  var carrierCost=parseFloat((document.getElementById('tl-carrier-cost')||{}).value)||0;
   var pickupDate=((document.getElementById('tl-pickup-date')||{}).value||'');
+  var pickupTime=((document.getElementById('tl-pickup-time')||{}).value||'');
   var delivDate=((document.getElementById('tl-delivery-date')||{}).value||'');
+  var delivTime=((document.getElementById('tl-delivery-time')||{}).value||'');
   if(!direction){sfxError();toast('Select a shipment direction first');return;}
   if(!orig||!dest){sfxError();toast('Enter origin and destination');return;}
   var D=window.TMS_DATA;
@@ -4043,12 +4058,12 @@ function tmsAddLoad(postToBoard){
     pickupDate:pickupDate,deliveryDate:delivDate,
     assignedCarrierId:isOutsourced?carrierId:'',
     carrierName:carrierObj?carrierObj.companyName:'',
-    carrierRef:carrierRef,carrierCost:0,
+    carrierRef:carrierRef,carrierCost:carrierCost||0,
     trackingEnabled:!!(trk),lastGpsLat:0,lastGpsLng:0,lastGpsTimestamp:'',gpsHeading:0,gpsSpeedKph:0,
     legs:[],isSplit:false,parentShipmentId:null,splitIndex:null,splitOf:null,
     paps:paps||'',
-    pickupName:pickupName||'',
-    delivName:delivName||''
+    pickupName:pickupName||'',pickupPhone:pickupPhone||'',pickupTime:pickupTime||'',
+    delivName:delivName||'',delivPhone:delivPhone||'',deliveryTime:delivTime||''
   };
   D.loads.push(load);
   tmsSaveLocation(orig);
@@ -4464,40 +4479,61 @@ function tmsLogWarehouse(){
 }
 function tmsLogistics(){
   var D=window.TMS_DATA;
-  var etaMap={'Picked Up':'~36 hrs','In Transit':'~18 hrs','At Border':'~4 hrs','Delivered':'Delivered'};
-  var loadRows=D.loads.filter(function(l){return l.status!=='Delivered';}).map(function(l){
+  var outsourced=D.loads.filter(function(l){return !!l.assignedCarrierId;});
+  var active=outsourced.filter(function(l){return !l.past;});
+  var delivered=outsourced.filter(function(l){return !!l.past;});
+  var showAll=window._logShowAll||false;
+  var shown=showAll?outsourced:active;
+  var TMS_STATUS_COLORS={'ASSIGNED':'purple','EN_ROUTE_PICKUP':'blue','ARRIVED_PICKUP':'yellow','LOADED':'yellow','IN_TRANSIT':'purple','ARRIVED_DELIVERY':'blue','DELIVERED':'green','DELAYED':'red','In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
+  var rows=shown.map(function(l){
+    var cls=TMS_STATUS_COLORS[l.status]||'purple';
+    var carrier=l.carrierName||l.assignedCarrierId||'—';
+    var rate=l.carrierCost?'$'+Number(l.carrierCost).toLocaleString():'—';
+    var rev=l.revenue?'$'+Number(l.revenue).toLocaleString():'—';
+    var margin=(l.carrierCost&&l.revenue)?'$'+(l.revenue-l.carrierCost).toLocaleString():'—';
     return '<tr class="tms-tr">'+
-    '<td class="tms-td" style="color:var(--text)">'+l.id+'</td>'+
-    '<td class="tms-td">'+l.origin+' → '+l.dest+'</td>'+
-    '<td class="tms-td">'+l.truck+'</td>'+
-    '<td class="tms-td" style="color:var(--accent2)">'+(etaMap[l.status]||'—')+'</td></tr>';
+      '<td class="tms-td" style="font-size:11px;color:var(--text)">'+l.id+'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div></td>'+
+      '<td class="tms-td" style="font-size:11px"><div>'+l.origin+'</div><div style="color:var(--text3);font-size:9px">→ '+l.dest+'</div></td>'+
+      '<td class="tms-td" style="font-size:11px;color:var(--accent2)">'+carrier+'</td>'+
+      '<td class="tms-td" style="font-size:11px">'+rate+'<div style="font-size:9px;color:var(--text3)">Rev: '+rev+'</div></td>'+
+      '<td class="tms-td" style="font-size:11px;color:#63e682">'+margin+'</td>'+
+      '<td class="tms-td" style="font-size:10px;color:var(--text3)">'+
+        (l.pickupDate?l.pickupDate+(l.pickupTime?' '+l.pickupTime:''):'—')+
+      '</td>'+
+      '<td class="tms-td" style="font-size:10px;color:var(--text3)">'+
+        (l.deliveryDate||l.delivDate?((l.deliveryDate||l.delivDate)+(l.deliveryTime?' '+l.deliveryTime:'')):'—')+
+      '</td>'+
+      '<td class="tms-td"><span class="tms-badge '+cls+'" style="font-size:8px">'+(TMS_STATUS_LABELS[l.status]||l.status)+'</span></td>'+
+      '<td class="tms-td" style="white-space:nowrap;display:flex;gap:5px;padding:8px 6px">'+
+        '<button class="tms-btn sm" onclick="tmsViewLoad(\''+l.id+'\')">View</button>'+
+        '<button class="tms-btn sm primary" onclick="tmsRateConfirmation(\''+l.id+'\')" style="font-size:10px">Rate Conf</button>'+
+      '</td>'+
+    '</tr>';
   }).join('');
+  var kpiHtml='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;max-width:700px">'+
+    ['<div style="font-size:9px;letter-spacing:0.1em;color:var(--accent2)">ACTIVE</div><div style="font-size:24px;font-weight:300">'+active.length+'</div>',
+     '<div style="font-size:9px;letter-spacing:0.1em;color:var(--text3)">TOTAL</div><div style="font-size:24px;font-weight:300">'+outsourced.length+'</div>',
+     '<div style="font-size:9px;letter-spacing:0.1em;color:var(--text3)">CARRIER COST</div><div style="font-size:22px;font-weight:300">$'+outsourced.reduce(function(s,l){return s+(l.carrierCost||0);},0).toLocaleString()+'</div>',
+     '<div style="font-size:9px;letter-spacing:0.1em;color:#63e682">MARGIN</div><div style="font-size:22px;font-weight:300">$'+outsourced.reduce(function(s,l){return s+(l.revenue||0)-(l.carrierCost||0);},0).toLocaleString()+'</div>'
+    ].map(function(c){return '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px">'+c+'</div>';}).join('')+
+  '</div>';
+  var tableHtml=shown.length?
+    '<div style="overflow-x:auto;border:0.5px solid var(--border);border-radius:12px;background:var(--surface2)">'+
+    '<table class="tms-table" style="min-width:860px"><thead><tr>'+
+      '<th class="tms-th">Load</th><th class="tms-th">Route</th><th class="tms-th">Carrier</th>'+
+      '<th class="tms-th">Rate / Rev</th><th class="tms-th">Margin</th>'+
+      '<th class="tms-th">Pickup</th><th class="tms-th">Delivery</th>'+
+      '<th class="tms-th">Status</th><th class="tms-th"></th>'+
+    '</tr></thead><tbody>'+rows+'</tbody></table></div>' :
+    '<div style="text-align:center;padding:48px 0;border:0.5px dashed var(--border);border-radius:12px;color:var(--text3);font-size:13px">No outsourced loads yet.<br><span style="font-size:11px;opacity:0.55">When creating a shipment, choose "Outsource to Carrier" — it will appear here.</span></div>';
   document.getElementById('tms-body').innerHTML=
-  '<div class="tms-section-title">Route Planning <span class="tms-sim-badge">SAMSARA GPS — SIMULATED</span></div>'+
-  '<div class="tms-sub-note">Live vehicle positions updated via Samsara API integration. Route lines show active dispatches.</div>'+
-  '<div class="tms-map-mock">'+
-  '<div class="tms-map-grid"></div>'+
-  '<div class="tms-route-line" style="left:56%;top:42%;width:17%;transform:rotate(32deg)"></div>'+
-  '<div class="tms-truck-dot" style="left:64%;top:46%"></div>'+
-  '<div class="tms-pin" style="left:56%;top:42%">◉ Toronto</div>'+
-  '<div class="tms-pin" style="left:73%;top:36%">◉ Chicago</div>'+
-  '<div class="tms-route-line" style="left:9%;top:36%;width:9%;transform:rotate(22deg)"></div>'+
-  '<div class="tms-truck-dot" style="left:13%;top:38%"></div>'+
-  '<div class="tms-pin" style="left:9%;top:36%">◉ Vancouver</div>'+
-  '<div class="tms-pin" style="left:18%;top:32%">◉ Seattle</div>'+
-  '<div class="tms-route-line" style="left:71%;top:30%;width:11%;transform:rotate(18deg)"></div>'+
-  '<div class="tms-pin" style="left:71%;top:30%">◉ Montréal</div>'+
-  '<div class="tms-pin" style="left:82%;top:26%">◉ New York</div>'+
-  '<div class="tms-route-line" style="left:30%;top:52%;width:13%;transform:rotate(-8deg)"></div>'+
-  '<div class="tms-truck-dot" style="left:36%;top:51%"></div>'+
-  '<div class="tms-pin" style="left:30%;top:52%">◉ Calgary</div>'+
-  '<div class="tms-pin" style="left:43%;top:56%">◉ Denver</div>'+
-  '<div class="tms-map-legend">◉ City  ● Live Truck  — Active Route</div>'+
-  '</div>'+
-  '<div class="tms-section-title">Active Loads — ETA</div>'+
-  '<table class="tms-table" style="max-width:680px"><thead><tr>'+
-  '<th class="tms-th">Load</th><th class="tms-th">Route</th><th class="tms-th">Unit</th><th class="tms-th">ETA</th>'+
-  '</tr></thead><tbody>'+(loadRows||'<tr><td class="tms-td" colspan="4" style="color:var(--text3)">No active loads.</td></tr>')+'</tbody></table>';
+    '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">'+
+    '<div class="tms-section-title" style="margin:0">Carrier Logistics</div>'+
+    '<div style="display:flex;gap:6px">'+
+    '<button class="tms-btn sm" onclick="window._logShowAll=false;tmsLogistics()" style="'+(showAll?'':'background:rgba(224,123,32,0.18);border-color:rgba(224,123,32,0.5)')+'">Active ('+active.length+')</button>'+
+    '<button class="tms-btn sm" onclick="window._logShowAll=true;tmsLogistics()" style="'+(showAll?'background:rgba(245,166,35,0.12);border-color:rgba(245,166,35,0.4)':'')+'">All ('+outsourced.length+')</button>'+
+    '</div></div>'+
+    kpiHtml+tableHtml;
 }
 function tmsCustoms(){
   /* Pull latest manifests from server (cross-device sync) */
@@ -9441,6 +9477,77 @@ function dataImportSave(){
    ════════════════════════════════════════ */
 
 /* Direction gate: show details section when both type + direction selected */
+function tmsRateConfirmation(loadId){
+  var D=window.TMS_DATA;
+  var l=D.loads.find(function(x){return x.id===loadId;});
+  if(!l){sfxError();toast('Load not found');return;}
+  var company=(D.settings&&D.settings.companyName)||'4M Transport Inc.';
+  var companyAddr=(D.settings&&D.settings.address)||'Montreal, QC, Canada';
+  var companyPhone=(D.settings&&D.settings.phone)||'';
+  var today=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+  var carrier=l.carrierName||l.assignedCarrierId||'—';
+  var rate=l.carrierCost?'$'+Number(l.carrierCost).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})+' CAD':'— (not set)';
+  var pkDate=l.pickupDate||'—';var pkTime=l.pickupTime||'';
+  var dlDate=l.deliveryDate||l.delivDate||'—';var dlTime=l.deliveryTime||'';
+  var dlDateStr=(dlDate!=='—'?dlDate:'—')+(dlTime?' at '+dlTime:'');
+  var pkDateStr=(pkDate!=='—'?pkDate:'—')+(pkTime?' at '+pkTime:'');
+  var row=function(label,val){return '<tr><td style="padding:7px 12px;font-size:11px;color:#555;border-bottom:1px solid #eee;width:34%;vertical-align:top">'+label+'</td><td style="padding:7px 12px;font-size:11px;color:#111;border-bottom:1px solid #eee">'+val+'</td></tr>';};
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rate Confirmation — '+l.id+'</title>'+
+  '<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,Arial,sans-serif;background:#fff;color:#111;padding:0}'+
+  '@media print{body{padding:0}.no-print{display:none!important}@page{margin:14mm}}'+
+  '.page{max-width:780px;margin:0 auto;padding:32px 36px}'+
+  'h1{font-size:22px;font-weight:600;color:#1a1a2e}h2{font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#555;margin-bottom:8px;margin-top:20px}'+
+  'table{width:100%;border-collapse:collapse;border:1px solid #ddd;border-radius:6px;overflow:hidden;margin-bottom:16px}'+
+  '.hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #e07820;padding-bottom:16px;margin-bottom:20px}'+
+  '.badge{display:inline-block;background:#e07820;color:#fff;font-size:10px;font-weight:600;letter-spacing:0.08em;padding:3px 10px;border-radius:3px;text-transform:uppercase}'+
+  '.sig-box{border:1px solid #ddd;border-radius:6px;padding:16px;margin-top:8px;min-height:60px}'+
+  '.footer{margin-top:24px;font-size:9px;color:#999;border-top:1px solid #eee;padding-top:12px;text-align:center;line-height:1.6}'+
+  '</style></head><body><div class="page">'+
+  '<div class="hdr">'+
+  '<div><h1>'+company+'</h1><div style="font-size:11px;color:#555;margin-top:4px">'+companyAddr+(companyPhone?' · '+companyPhone:'')+'</div></div>'+
+  '<div style="text-align:right"><div class="badge">Rate Confirmation</div><div style="font-size:10px;color:#555;margin-top:6px">Issue Date: '+today+'</div><div style="font-size:12px;font-weight:600;color:#1a1a2e;margin-top:4px">Load: '+l.id+(l.ref?' · Ref: '+l.ref:'')+'</div></div>'+
+  '</div>'+
+  '<h2>Carrier</h2>'+
+  '<table><tbody>'+
+  row('Carrier Name',carrier)+
+  row('Carrier Rate',rate)+
+  (l.carrierRef?row('Carrier Ref #',l.carrierRef):'')+
+  row('Trailer Type',l.trailerType||'—')+
+  '</tbody></table>'+
+  '<h2>Pickup</h2>'+
+  '<table><tbody>'+
+  row('Pickup Name',l.pickupName||'—')+
+  row('Pickup Address',l.origin||'—')+
+  row('Pickup Phone',l.pickupPhone||'—')+
+  row('Pickup Date / Time',pkDateStr)+
+  '</tbody></table>'+
+  '<h2>Delivery</h2>'+
+  '<table><tbody>'+
+  row('Delivery Name',l.delivName||'—')+
+  row('Delivery Address',l.dest||'—')+
+  row('Delivery Phone',l.delivPhone||'—')+
+  row('Delivery Date / Time',dlDateStr)+
+  '</tbody></table>'+
+  '<h2>Load Details</h2>'+
+  '<table><tbody>'+
+  row('Commodity',l.commodity||'—')+
+  row('Weight',l.weight||'—')+
+  row('Customer',l.customer||'—')+
+  (l.notes?row('Special Instructions',l.notes):'')+
+  '</tbody></table>'+
+  '<h2>Carrier Acceptance</h2>'+
+  '<div class="sig-box"><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:12px">'+
+  '<div><div style="font-size:10px;color:#555;margin-bottom:22px">Carrier Authorized Signature</div><div style="border-bottom:1px solid #aaa">&nbsp;</div><div style="font-size:9px;color:#aaa;margin-top:4px">Signature</div></div>'+
+  '<div><div style="font-size:10px;color:#555;margin-bottom:22px">Print Name &amp; Date</div><div style="border-bottom:1px solid #aaa">&nbsp;</div><div style="font-size:9px;color:#aaa;margin-top:4px">Name / Date</div></div>'+
+  '</div></div>'+
+  '<div class="footer">This rate confirmation constitutes a binding agreement between '+company+' and the carrier named above.<br>By accepting this load the carrier agrees to the terms and conditions of '+company+'\'s standard carrier agreement.</div>'+
+  '<div class="no-print" style="text-align:center;margin-top:24px"><button onclick="window.print()" style="background:#e07820;color:#fff;border:none;border-radius:6px;padding:10px 28px;font-size:14px;cursor:pointer;font-family:inherit">⬇ Download / Print PDF</button>&nbsp;&nbsp;<button onclick="window.close()" style="background:#eee;color:#333;border:none;border-radius:6px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:inherit">Close</button></div>'+
+  '</div></body></html>';
+  var w=window.open('','_blank','width=820,height=900');
+  if(w){w.document.write(html);w.document.close();w.focus();}
+  else{toast('Allow pop-ups to open the rate confirmation');}
+}
+
 function tmsDirectionChange(){
   var ltype=document.getElementById('tl-type')&&document.getElementById('tl-type').value;
   var dir=document.getElementById('tl-direction')&&document.getElementById('tl-direction').value;
@@ -9465,12 +9572,17 @@ function tmsSelectTerminalDest(sel){
 }
 
 /* Toggle internal driver vs carrier fields */
-function tmsAssignModeChange(){
-  var mode=document.getElementById('tl-assign-mode')&&document.getElementById('tl-assign-mode').value;
-  var drvWrap=document.getElementById('tl-driver-wrap');
-  var crrWrap=document.getElementById('tl-carrier-wrap');
-  if(drvWrap)drvWrap.style.display=(mode==='outsource')?'none':'';
-  if(crrWrap)crrWrap.style.display=(mode==='outsource')?'':'none';
+function tmsAssignModeChange(){tmsSetAssignMode((document.getElementById('tl-assign-mode')||{}).value||'internal');}
+function tmsSetAssignMode(mode){
+  var modeInput=document.getElementById('tl-assign-mode');if(modeInput)modeInput.value=mode;
+  var outsource=mode==='outsource';
+  ['tl-driver-wrap','tl-driver-wrap2'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=outsource?'none':'';});
+  ['tl-carrier-wrap','tl-carrier-cost-wrap','tl-carrier-ref-wrap'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display=outsource?'':'none';});
+  var btnInt=document.getElementById('tl-mode-internal');var btnOut=document.getElementById('tl-mode-outsource');
+  if(btnInt){btnInt.style.background=outsource?'':'rgba(224,123,32,0.18)';btnInt.style.borderColor=outsource?'':'rgba(224,123,32,0.5)';}
+  if(btnOut){btnOut.style.background=outsource?'rgba(224,123,32,0.18)':'';btnOut.style.borderColor=outsource?'rgba(224,123,32,0.5)':'';}
+  /* Populate carrier dropdown */
+  if(outsource){var sel=document.getElementById('tl-carrier-sel');if(sel&&sel.options.length<=1){var D=window.TMS_DATA;(D.carriers||[]).filter(function(c){return c.status==='approved';}).forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.companyName||c.name||c.id;sel.appendChild(o);});}}
 }
 
 /* Calculate estimated driver pay based on shipment type / direction */
