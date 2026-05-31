@@ -1255,6 +1255,7 @@ function _fbListenTMS(){
     if(d.clientInvoices)D.clientInvoices=d.clientInvoices;
     if(d.carriers)D.carriers=d.carriers;
     if(d.ownerOperators)D.ownerOperators=d.ownerOperators;
+    if(d.driverWeekPaid)D.driverWeekPaid=d.driverWeekPaid;
     if(d.ownerOpWeekPaid)D.ownerOpWeekPaid=d.ownerOpWeekPaid;
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
@@ -4337,7 +4338,7 @@ function tmsViewLoad(id,tab){
       '</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
         '<button class="tms-btn" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:11px">📧 Send Dispatch Email</button>'+
-        (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'pay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
+        (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'driverpay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
       '</div>'+
       (l.dispatched?'<div style="font-size:11px;color:#63e682;margin-bottom:14px;background:rgba(99,230,130,0.08);border:0.5px solid rgba(99,230,130,0.2);border-radius:8px;padding:8px 12px">✓ Dispatched on '+l.dispatchDate+' → '+l.dispatchEmail+'</div>':'')+
     '</div>'+
@@ -4394,11 +4395,15 @@ function _readCurrentStopFields(l){
 }
 
 function tmsVLSetMode(loadId,mode){
-  document.getElementById('vl-dispatch-mode').value=mode;
+  var mi=document.getElementById('vl-dispatch-mode');if(mi)mi.value=mode;
   ['internal','ownerop','outsource'].forEach(function(m){
     var panel=document.getElementById('vl-dispatch-'+m);if(panel)panel.style.display=m===mode?'':'none';
     var btn=document.getElementById('vl-mode-'+m);
-    if(btn){btn.style.background=m===mode?'rgba(224,123,32,0.18)':'';btn.style.borderColor=m===mode?'rgba(224,123,32,0.5)':'';btn.style.color=m===mode?'var(--accent)':(''||btn.style.color.includes('#')?'':'');}
+    if(btn){
+      btn.style.background=m===mode?'rgba(224,123,32,0.18)':'';
+      btn.style.borderColor=m===mode?'rgba(224,123,32,0.5)':'';
+      btn.style.color=m===mode?'var(--accent)':'';
+    }
   });
 }
 
@@ -8482,6 +8487,7 @@ window.TMS_DATA={
   payRates:{localDelivery:45,ltlCityLeg:65,ftlCityLeg:120,usHaulFlat:350,terminalBonus:25},
   carriers:[],
   ownerOperators:[],
+  driverWeekPaid:{},
   ownerOpWeekPaid:{},
   terminals:[
     {id:'TERM-LAV',name:'Laval Terminal',address:'2907 Bd Dagenais, Laval, QC H7P 1T2',city:'Laval',lat:45.5746,lng:-73.7220,isTerminal:true},
