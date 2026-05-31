@@ -3752,7 +3752,7 @@ function tmsDashPanel(id,src){
     (stops?'<div style="margin-top:12px"><div class="tms-section-title" style="font-size:11px;margin-bottom:6px">Stops</div>'+stops+'</div>':'')+
     (src==='tms'?'<div style="display:flex;gap:8px;margin-top:18px;flex-wrap:wrap">'+
       '<button class="tms-btn primary" onclick="tmsViewLoad(\''+l.id+'\')">Open Full Detail</button>'+
-      '<button class="tms-btn" onclick="tmsEditLoad(\''+l.id+'\')">Edit</button>'+
+      '<button class="tms-btn" onclick="tmsViewLoad(\''+l.id+'\')">Edit</button>'+
     '</div>':'');
   document.body.appendChild(panel);
   requestAnimationFrame(function(){panel.classList.add('open');});
@@ -4178,74 +4178,247 @@ function tmsParseEdi(){
   }catch(e){sfxError();toast('EDI parse error: '+(e.message||'Check format'));}
 }
 
-function tmsViewLoad(id){
+function tmsViewLoad(id,tab){
   var D=window.TMS_DATA;
   var l=D.loads.find(function(x){return x.id===id;});
   if(!l)return;
-  var cls=TMS_STATUS_COLORS_MAP[l.status]||'purple';
-  var dest=(l.dest||'').toLowerCase();
-  var isXborder=(dest.indexOf(', wa')!==-1||dest.indexOf(', il')!==-1||dest.indexOf(', ny')!==-1||dest.indexOf(', co')!==-1||dest.indexOf(', ca')!==-1||dest.indexOf(', tx')!==-1||dest.indexOf(', mn')!==-1||dest.indexOf(', mt')!==-1);
-  var hint=isXborder?
-  '<div class="tms-note warn">⚠ Cross-border — ensure ACI/ACE filed min 1 hr prior to arrival. Verify PAPS/PARS with broker before departure.</div>':
-  '<div class="tms-note">◉ Domestic shipment — standard carrier docs apply (BOL, POD). No customs filing required.</div>';
-  var mapsUrl='https://www.google.com/maps/dir/'+encodeURIComponent(l.origin)+'/'+encodeURIComponent(l.dest);
+  /* Bootstrap stops array from flat fields if first time */
+  if(!l.stops||!l.stops.length){
+    l.stops=[];
+    if(l.origin||l.pickupName)l.stops.push({type:'P',name:l.pickupName||'',address:l.origin||'',date:l.pickupDate||'',appointment:'',refNo:'',contact:'',phone:l.pickupPhone||'',package:'',weight:l.weight||'',temp:'',unitType:'',note:''});
+    if(l.dest||l.delivName)l.stops.push({type:'D',name:l.delivName||'',address:l.dest||'',date:l.deliveryDate||'',appointment:'',refNo:'',contact:'',phone:l.delivPhone||'',package:'',weight:'',temp:'',unitType:'',note:l.notes||''});
+  }
+  var activeTab=tab||window._loadViewTab||'shipment';
+  window._loadViewTab=activeTab;window._loadViewId=id;
   var allStatuses=Object.keys(TMS_STATUS_LABELS);
   var statusOpts=allStatuses.map(function(s){return'<option value="'+s+'"'+(s===l.status?' selected':'')+'>'+TMS_STATUS_LABELS[s]+'</option>';}).join('');
-  var expDef=JSON.parse(localStorage.getItem('TMS_EXPENSE_DEFAULTS')||'{}');
-  var expSect='<div style="background:rgba(245,166,35,0.04);border:0.5px solid rgba(245,166,35,0.18);border-radius:12px;padding:18px;margin-top:16px">'+
-  '<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent2);text-transform:uppercase;margin-bottom:14px">Net Income Predictor</div>'+
-  '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px">'+
-  '<div><label class="tms-label">Driver Pay ($)</label><input class="tms-input" id="exp-drv" type="number" min="0" value="'+(expDef.driverPay||'')+'" oninput="tmsCalcNI('+l.revenue+')" placeholder="0"></div>'+
-  '<div><label class="tms-label">Fuel ($)</label><input class="tms-input" id="exp-gas" type="number" min="0" value="'+(expDef.gas||'')+'" oninput="tmsCalcNI('+l.revenue+')" placeholder="0"></div>'+
-  '<div><label class="tms-label">Truck Rent ($)</label><input class="tms-input" id="exp-truck" type="number" min="0" value="'+(expDef.truckRent||'')+'" oninput="tmsCalcNI('+l.revenue+')" placeholder="0"></div>'+
-  '<div><label class="tms-label">Office/Rent ($)</label><input class="tms-input" id="exp-rent" type="number" min="0" value="'+(expDef.rent||'')+'" oninput="tmsCalcNI('+l.revenue+')" placeholder="0"></div>'+
-  '<div><label class="tms-label">Tolls ($)</label><input class="tms-input" id="exp-tolls" type="number" min="0" value="'+(expDef.tolls||'')+'" oninput="tmsCalcNI('+l.revenue+')" placeholder="0"></div>'+
-  '<div><label class="tms-label">Other ($)</label><input class="tms-input" id="exp-other" type="number" min="0" value="'+(expDef.other||'')+'" oninput="tmsCalcNI('+l.revenue+')" placeholder="0"></div>'+
-  '</div>'+
-  '<div id="ni-result" style="display:flex;gap:12px;flex-wrap:wrap">'+
-  '<div style="font-size:11px;color:var(--text3)">Enter expenses above to calculate</div>'+
-  '</div>'+
-  '<div style="margin-top:10px"><button class="tms-btn sm" onclick="tmsSaveExpDefaults()">💾 Save as Defaults</button></div>'+
-  '</div>';
-  document.getElementById('tms-body').innerHTML=
-  '<span class="tms-back" onclick="tmsTab(\'transport\')">← Back to Transport</span>'+
-  '<div class="tms-detail-card">'+
-  '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">'+
-  '<div style="font-size:20px;color:var(--text);font-weight:300">'+l.id+'</div>'+
-  '<span class="tms-badge '+cls+'">'+l.status+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Reference</span><span class="tms-detail-val" style="color:var(--accent2)">'+l.ref+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Type</span><span class="tms-detail-val"><span class="tms-badge purple">'+(l.shipmentType||l.loadType||'FTL')+'</span>'+(l.direction?'&nbsp;<span class="tms-badge blue">'+l.direction+'</span>':'')+'</span></div>'+
-  (l.parentShipmentId?'<div class="tms-detail-row"><span class="tms-detail-lbl">Split</span><span class="tms-detail-val">Split '+l.splitIndex+' of '+l.splitOf+' · Parent: '+l.parentShipmentId+'</span></div>':'')+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Customer</span><span class="tms-detail-val">'+(l.customer||'—')+'</span></div>'+
-  (l.pickupName?'<div class="tms-detail-row"><span class="tms-detail-lbl">Pickup</span><span class="tms-detail-val" style="color:var(--accent2)">'+l.pickupName+'</span></div>':'')+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Origin</span><span class="tms-detail-val">'+l.origin+'</span></div>'+
-  (l.delivName?'<div class="tms-detail-row"><span class="tms-detail-lbl">Delivery</span><span class="tms-detail-val" style="color:var(--accent2)">'+l.delivName+'</span></div>':'')+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Destination</span><span class="tms-detail-val">'+l.dest+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Driver</span><span class="tms-detail-val">'+(l.assignedCarrierId?'<span class="tms-badge yellow">Carrier: '+(l.carrierName||l.assignedCarrierId)+'</span>':l.driver)+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Truck</span><span class="tms-detail-val">'+(l.assignedTruckId||l.truck)+(l.assignedTrailerId?' · Trailer: '+l.assignedTrailerId:'')+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Commodity</span><span class="tms-detail-val">'+l.commodity+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Weight</span><span class="tms-detail-val">'+l.weight+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Revenue</span><span class="tms-detail-val" style="color:var(--accent2)">$'+l.revenue.toLocaleString()+'</span></div>'+
-  (l.pickupDate?'<div class="tms-detail-row"><span class="tms-detail-lbl">Pickup Date</span><span class="tms-detail-val">'+l.pickupDate+'</span></div>':'')+
-  (l.deliveryDate?'<div class="tms-detail-row"><span class="tms-detail-lbl">Delivery Date</span><span class="tms-detail-val">'+l.deliveryDate+'</span></div>':'')+
-  (l.paps?'<div class="tms-detail-row"><span class="tms-detail-lbl">PAPS Number</span><span class="tms-detail-val" style="color:var(--accent2);font-family:monospace;letter-spacing:0.05em">'+l.paps+'</span></div>':'')+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Created</span><span class="tms-detail-val">'+l.created+'</span></div>'+
-  '<div class="tms-detail-row"><span class="tms-detail-lbl">Status</span><span class="tms-detail-val"><select onchange="tmsUpdateStatus(\''+l.id+'\',this.value)" style="background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-size:11px;padding:3px 6px;border-radius:6px">'+statusOpts+'</select></span></div>'+
-  (l.lastGpsLat?'<div class="tms-detail-row"><span class="tms-detail-lbl">Last GPS</span><span class="tms-detail-val" style="color:var(--accent2)">'+l.lastGpsLat.toFixed(4)+', '+l.lastGpsLng.toFixed(4)+' · '+(l.gpsSpeedKph>0?l.gpsSpeedKph.toFixed(0)+' km/h':'Parked')+(l.lastGpsTimestamp?' · '+new Date(l.lastGpsTimestamp).toLocaleTimeString():'')+'</span></div>':'')+
-  '</div>'+
-  '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'+
-  '<a href="'+mapsUrl+'" target="_blank" style="display:inline-block;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.3);color:var(--accent);font-size:11px;padding:8px 14px;border-radius:8px;text-decoration:none">🗺 View Route ↗</a>'+
-  '<button class="tms-btn" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:11px">📧 Dispatch Driver</button>'+
-  '<button class="tms-btn" onclick="tmsEditLoad(\''+l.id+'\')" style="font-size:11px">✏️ Edit Load</button>'+
-  (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'pay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
-  (l.status!=='DELIVERED'&&l.status!=='Delivered'?'<button class="tms-btn" onclick="tmsSplitLoad(\''+l.id+'\')" style="font-size:11px;border-color:rgba(255,200,60,0.4);color:#ffc83c">⚡ Split Load</button>':'')+''+
-  '<button class="tms-btn" onclick="tmsAddRelayLeg(\''+l.id+'\')" style="font-size:11px;border-color:rgba(78,200,255,0.4);color:#4ec8ff">🔁 Add Relay Leg</button>'+
-  (l.trackingEnabled||l.lastGpsLat?'<button class="tms-btn" onclick="tmsShowClientMap(\''+l.id+'\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">🛰 Live Map</button>':'')+''+
-  '</div>'+
-  '<div class="tms-section-title" style="font-size:12px;color:var(--text3);margin-top:12px">Route Note</div>'+hint+
-  tmsSmTruckPanel(l)+
-  expSect;
+  /* ── Header ── */
+  var hdr='<div style="display:flex;align-items:center;gap:10px;margin-bottom:0;flex-wrap:wrap;padding-bottom:14px;border-bottom:0.5px solid var(--border)">'+
+    '<button onclick="tmsTab(\'transport\')" style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0;line-height:1">←</button>'+
+    '<div style="font-size:16px;color:var(--text);font-weight:400;flex:1;letter-spacing:0.01em">'+l.id+'</div>'+
+    '<select onchange="tmsUpdateStatus(\''+l.id+'\',this.value)" style="background:var(--surface2);border:0.5px solid var(--border);color:var(--text);font-size:11px;padding:6px 8px;border-radius:8px;font-family:inherit">'+statusOpts+'</select>'+
+    (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn sm" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:10px">📧 Dispatch</button>':'')+
+    '</div>';
+  /* ── Tabs ── */
+  var TABS=[['shipment','Shipment'],['customer','Customer'],['revenue','Revenue'],['dispatch','Driver & Equipment'],['outsource','Outsource']];
+  var tabBar='<div style="display:flex;gap:0;border-bottom:0.5px solid var(--border);margin-bottom:20px;overflow-x:auto;-webkit-overflow-scrolling:touch">'+
+    TABS.map(function(t){var on=t[0]===activeTab;return'<button onclick="tmsViewLoad(\''+id+'\',\''+t[0]+'\')" style="padding:11px 16px;font-size:11px;background:none;border:none;border-bottom:2px solid '+(on?'var(--accent)':'transparent')+';color:'+(on?'var(--accent)':'var(--text3)')+';cursor:pointer;white-space:nowrap;font-family:inherit;letter-spacing:0.04em;transition:color 0.15s">'+t[1]+'</button>';}).join('')+
+    '</div>';
+  var content='';
+  /* ════ SHIPMENT TAB ════ */
+  if(activeTab==='shipment'){
+    var triOpts='<option value="">—</option>'+D.equipment.filter(function(e){return e.category==='Trailer';}).map(function(e){var u=e.unit||e.id;return'<option value="'+u+'"'+(u===l.trailer?' selected':'')+'>'+u+(e.type&&e.type!=='Dry Van'?' — '+e.type:'')+(e.plate?' ('+e.plate+')':'')+'</option>';}).join('');
+    content+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px">'+
+      '<div><label class="tms-label">Commodity</label><input class="tms-input" id="vl-commodity" value="'+(l.commodity||'')+'" placeholder="e.g. Electronics"></div>'+
+      '<div><label class="tms-label">Value of Goods ($)</label><input class="tms-input" id="vl-value" type="number" value="'+(l.declaredValue||'')+'" placeholder="0"></div>'+
+      '<div><label class="tms-label">Equipment / Trailer</label><select class="tms-select" id="vl-trailer">'+triOpts+'</select></div>'+
+      '<div><label class="tms-label"># Packages</label><input class="tms-input" id="vl-packages" type="number" value="'+(l.packages||'')+'" placeholder="0"></div>'+
+      '<div><label class="tms-label">Weight</label><input class="tms-input" id="vl-weight" value="'+(l.weight||'')+'" placeholder="42000 lbs"></div>'+
+      '<div><label class="tms-label">Dimensions (L×W×H)</label><input class="tms-input" id="vl-dims" value="'+(l.dimensions||'')+'" placeholder="53×102×110 in"></div>'+
+      '<div><label class="tms-label">Temperature</label><input class="tms-input" id="vl-temp" value="'+(l.temperature||'')+'" placeholder="e.g. -18°C"></div>'+
+    '</div>';
+    content+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+      '<button class="tms-btn primary" onclick="tmsAddStop(\''+id+'\',\'P\')" style="font-size:11px;background:rgba(76,175,80,0.15);border-color:rgba(76,175,80,0.4);color:#4caf50">+ Add Pickup</button>'+
+      '<button class="tms-btn" onclick="tmsAddStop(\''+id+'\',\'D\')" style="font-size:11px;background:rgba(244,67,54,0.10);border-color:rgba(244,67,54,0.4);color:#f44336">+ Add Delivery</button>'+
+    '</div>';
+    if(l.stops&&l.stops.length){
+      content+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">';
+      l.stops.forEach(function(s,idx){
+        var isP=s.type==='P';
+        var cc=isP?'#4caf50':'#f44336';var lbl=isP?'P':'D';
+        content+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden">'+
+          '<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">'+
+          '<div style="width:26px;height:26px;border-radius:50%;background:'+cc+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:3px">'+lbl+'</div>'+
+          '<div style="flex:1;display:flex;flex-direction:column;gap:5px">'+
+          '<input class="tms-input" id="vl-s'+idx+'-name" value="'+(s.name||'')+'" placeholder="Company / Location Name" style="font-size:13px;font-weight:500">'+
+          '<input class="tms-input" id="vl-s'+idx+'-addr" value="'+(s.address||'')+'" placeholder="Full Address" style="font-size:11px">'+
+          '</div>'+
+          '<button onclick="tmsRemoveStop(\''+id+'\','+idx+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;flex-shrink:0;line-height:1" title="Remove">×</button>'+
+          '</div>'+
+          '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;padding:10px 14px">'+
+          '<div><label class="tms-label">Date</label><input class="tms-input" id="vl-s'+idx+'-date" type="date" value="'+(s.date||'')+'"></div>'+
+          '<div><label class="tms-label">Appointment</label><input class="tms-input" id="vl-s'+idx+'-appt" value="'+(s.appointment||'')+'" placeholder="08:00–10:00"></div>'+
+          '<div><label class="tms-label">'+(isP?'Pickup':'Delivery')+' No</label><input class="tms-input" id="vl-s'+idx+'-ref" value="'+(s.refNo||'')+'" placeholder="Ref #"></div>'+
+          '<div><label class="tms-label">Contact</label><input class="tms-input" id="vl-s'+idx+'-contact" value="'+(s.contact||'')+'" placeholder="Name"></div>'+
+          '<div><label class="tms-label">Phone</label><input class="tms-input" id="vl-s'+idx+'-phone" value="'+(s.phone||'')+'" placeholder="555-0100"></div>'+
+          '<div><label class="tms-label">Package</label><input class="tms-input" id="vl-s'+idx+'-pkg" value="'+(s.package||'')+'" placeholder="e.g. 10 skids"></div>'+
+          '<div><label class="tms-label">Weight</label><input class="tms-input" id="vl-s'+idx+'-wgt" value="'+(s.weight||'')+'" placeholder="lbs"></div>'+
+          '<div><label class="tms-label">Temp</label><input class="tms-input" id="vl-s'+idx+'-temp" value="'+(s.temp||'')+'" placeholder="°C / °F"></div>'+
+          '<div><label class="tms-label">Unit Type</label><input class="tms-input" id="vl-s'+idx+'-unit" value="'+(s.unitType||'')+'" placeholder="Pallet / Box"></div>'+
+          '<div style="grid-column:1/-1"><label class="tms-label">Note</label><input class="tms-input" id="vl-s'+idx+'-note" value="'+(s.note||'')+'" placeholder="Special instructions" style="width:100%"></div>'+
+          '</div>'+
+          '</div>';
+      });
+      content+='</div>';
+    }else{
+      content+='<div style="text-align:center;padding:36px 0;border:0.5px dashed var(--border);border-radius:12px;color:var(--text3);font-size:13px;margin-bottom:16px">No stops yet.<br><span style="font-size:11px;opacity:0.55">Use + Add Pickup / + Add Delivery above.</span></div>';
+    }
+    content+='<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:4px">💾 Save Changes</button>';
+  }
+  /* ════ CUSTOMER TAB ════ */
+  else if(activeTab==='customer'){
+    var custOpts=(D.customers||[]).map(function(c){return'<option value="'+c.name+'"'+(c.name===l.customer?' selected':'')+'>'+c.name+(c.company?' · '+c.company:'')+'</option>';}).join('');
+    content+='<div class="tms-form-grid" style="max-width:600px">'+
+      '<div class="tms-form-full"><label class="tms-label">Customer</label><select class="tms-select" id="vl-customer"><option value="">— Select —</option>'+custOpts+'</select></div>'+
+      '<div><label class="tms-label">Reference #</label><input class="tms-input" id="vl-ref" value="'+(l.ref||'')+'"></div>'+
+      '<div><label class="tms-label">Booked By</label><input class="tms-input" id="vl-bookedby" value="'+(l.bookedBy||'')+'"></div>'+
+      '<div><label class="tms-label">PAPS Number</label><input class="tms-input" id="vl-paps" value="'+(l.paps||'')+'" placeholder="MACT00003205"></div>'+
+      '<div><label class="tms-label">Load Type</label><select class="tms-select" id="vl-loadtype"><option value="FTL"'+(l.loadType==='FTL'?' selected':'')+'>FTL</option><option value="LTL"'+(l.loadType==='LTL'?' selected':'')+'>LTL</option></select></div>'+
+      '<div><label class="tms-label">Direction</label><select class="tms-select" id="vl-direction"><option value="">—</option>'+
+      ['Outbound','Inbound','Local','Provincial','Global'].map(function(d){return'<option value="'+d+'"'+(l.direction===d?' selected':'')+'>'+d+'</option>';}).join('')+
+      '</select></div>'+
+    '</div>'+
+    '<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:16px">💾 Save Changes</button>';
+  }
+  /* ════ REVENUE TAB ════ */
+  else if(activeTab==='revenue'){
+    var expDef=JSON.parse(localStorage.getItem('TMS_EXPENSE_DEFAULTS')||'{}');
+    content+='<div class="tms-form-grid" style="max-width:520px;margin-bottom:16px">'+
+      '<div><label class="tms-label">Revenue ($)</label><input class="tms-input" id="vl-revenue" type="number" value="'+(l.revenue||0)+'" oninput="tmsCalcNI(this.value)"></div>'+
+      '<div><label class="tms-label">Declared Value ($)</label><input class="tms-input" id="vl-value2" type="number" value="'+(l.declaredValue||'')+'"></div>'+
+      (l.assignedCarrierId?'<div><label class="tms-label">Carrier Cost ($)</label><input class="tms-input" id="vl-carrier-cost" type="number" value="'+(l.carrierCost||0)+'"></div>':'')+
+    '</div>'+
+    '<div style="background:rgba(245,166,35,0.04);border:0.5px solid rgba(245,166,35,0.18);border-radius:12px;padding:18px;margin-bottom:16px">'+
+    '<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent2);text-transform:uppercase;margin-bottom:14px">Net Income Predictor</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px">'+
+    '<div><label class="tms-label">Driver Pay ($)</label><input class="tms-input" id="exp-drv" type="number" min="0" value="'+(expDef.driverPay||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Fuel ($)</label><input class="tms-input" id="exp-gas" type="number" min="0" value="'+(expDef.gas||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Truck Rent ($)</label><input class="tms-input" id="exp-truck" type="number" min="0" value="'+(expDef.truckRent||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Office/Rent ($)</label><input class="tms-input" id="exp-rent" type="number" min="0" value="'+(expDef.rent||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Tolls ($)</label><input class="tms-input" id="exp-tolls" type="number" min="0" value="'+(expDef.tolls||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Other ($)</label><input class="tms-input" id="exp-other" type="number" min="0" value="'+(expDef.other||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '</div>'+
+    '<div id="ni-result" style="display:flex;gap:12px;flex-wrap:wrap"><div style="font-size:11px;color:var(--text3)">Enter expenses above to calculate</div></div>'+
+    '<div style="margin-top:10px"><button class="tms-btn sm" onclick="tmsSaveExpDefaults()">💾 Save as Defaults</button></div>'+
+    '</div>'+
+    '<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:4px">💾 Save Changes</button>';
+  }
+  /* ════ DISPATCH TAB ════ */
+  else if(activeTab==='dispatch'){
+    var drvOpts=D.drivers.map(function(d){return'<option value="'+d.name+'"'+(d.name===l.driver?' selected':'')+'>'+d.name+(d.phone?' · '+d.phone:'')+'</option>';}).join('');
+    var trkOpts=D.equipment.filter(function(e){return e.category==='Truck';}).map(function(e){var u=e.unit||e.id;return'<option value="'+u+'"'+(u===l.truck?' selected':'')+'>Unit '+u+' — '+e.make+(e.model?' '+e.model:'')+(e.year?' '+e.year:'')+'</option>';}).join('');
+    var tri2Opts=D.equipment.filter(function(e){return e.category==='Trailer'&&(e.status==='Active'||e.status==='active');}).sort(function(a,b){return(a.unit||a.id).localeCompare(b.unit||b.id,undefined,{numeric:true});}).map(function(e){var u=e.unit||e.id;return'<option value="'+u+'"'+(u===l.trailer?' selected':'')+'>'+u+(e.type&&e.type!=='Dry Van'?' — '+e.type:'')+(e.plate?' ('+e.plate+')':'')+'</option>';}).join('');
+    content+='<div class="tms-form-grid" style="max-width:560px;margin-bottom:16px">'+
+      '<div><label class="tms-label">Driver</label><select class="tms-select" id="vl-driver"><option value="">Unassigned</option>'+drvOpts+'</select></div>'+
+      '<div><label class="tms-label">Truck (Unit #)</label><select class="tms-select" id="vl-truck"><option value="">TBD</option>'+trkOpts+'</select></div>'+
+      '<div class="tms-form-full"><label class="tms-label">Trailer</label><select class="tms-select" id="vl-trailer2"><option value="">TBD</option>'+tri2Opts+'</select></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+
+      '<button class="tms-btn" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:11px">📧 Send Dispatch Email</button>'+
+      (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn" onclick="window._dpWeekTs=null;_tmsDispatch(\'pay\')" style="font-size:11px;border-color:rgba(245,166,35,0.4);color:var(--accent2)">💵 Driver Pay</button>':'')+
+    '</div>'+
+    (l.dispatched?'<div style="font-size:11px;color:#63e682;margin-bottom:14px;background:rgba(99,230,130,0.08);border:0.5px solid rgba(99,230,130,0.2);border-radius:8px;padding:8px 12px">✓ Dispatched on '+l.dispatchDate+' → '+l.dispatchEmail+'</div>':'')+
+    '<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:4px">💾 Save Changes</button>';
+  }
+  /* ════ OUTSOURCE TAB ════ */
+  else if(activeTab==='outsource'){
+    var crrOpts=(D.carriers||[]).filter(function(c){return c.status==='approved';}).map(function(c){return'<option value="'+c.id+'"'+(c.id===l.assignedCarrierId?' selected':'')+'>'+c.companyName+'</option>';}).join('');
+    content+='<div class="tms-form-grid" style="max-width:520px;margin-bottom:16px">'+
+      '<div class="tms-form-full"><label class="tms-label">Carrier</label><select class="tms-select" id="vl-carrier"><option value="">— Not outsourced (internal driver) —</option>'+crrOpts+'</select></div>'+
+      '<div><label class="tms-label">Carrier Rate ($)</label><input class="tms-input" id="vl-carrier-rate" type="number" value="'+(l.carrierCost||'')+'"></div>'+
+      '<div><label class="tms-label">Carrier Ref #</label><input class="tms-input" id="vl-carrier-ref" value="'+(l.carrierRef||'')+'"></div>'+
+    '</div>'+
+    (l.assignedCarrierId?'<button class="tms-btn" onclick="tmsRateConfirmation(\''+id+'\')" style="margin-bottom:14px;font-size:11px">📄 Download Rate Confirmation</button><br>':'')+
+    '<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:4px">💾 Save Changes</button>';
+  }
+  document.getElementById('tms-body').innerHTML=hdr+tabBar+content;
 }
+
+/* ─── Read current stop fields from DOM into l.stops ─── */
+function _readCurrentStopFields(l){
+  if(!l||!l.stops)return;
+  l.stops.forEach(function(s,idx){
+    var g=function(k){var el=document.getElementById('vl-s'+idx+'-'+k);return el?el.value:null;};
+    var n=g('name');if(n!==null)s.name=n;
+    var a=g('addr');if(a!==null)s.address=a;
+    var dt=g('date');if(dt!==null)s.date=dt;
+    s.appointment=g('appt')||s.appointment||'';
+    s.refNo=g('ref')||s.refNo||'';
+    s.contact=g('contact')||s.contact||'';
+    s.phone=g('phone')||s.phone||'';
+    s.package=g('pkg')||s.package||'';
+    s.weight=g('wgt')||s.weight||'';
+    s.temp=g('temp')||s.temp||'';
+    s.unitType=g('unit')||s.unitType||'';
+    s.note=g('note')||s.note||'';
+  });
+}
+
+function tmsAddStop(loadId,type){
+  var D=window.TMS_DATA;
+  var l=D.loads.find(function(x){return x.id===loadId;});
+  if(!l)return;
+  if(!l.stops)l.stops=[];
+  _readCurrentStopFields(l);
+  l.stops.push({type:type,name:'',address:'',date:'',appointment:'',refNo:'',contact:'',phone:'',package:'',weight:'',temp:'',unitType:'',note:''});
+  tmsViewLoad(loadId,'shipment');
+}
+
+function tmsRemoveStop(loadId,idx){
+  var D=window.TMS_DATA;
+  var l=D.loads.find(function(x){return x.id===loadId;});
+  if(!l||!l.stops)return;
+  _readCurrentStopFields(l);
+  l.stops.splice(idx,1);
+  tmsViewLoad(loadId,'shipment');
+}
+
+function tmsSaveLoadInline(id){
+  var D=window.TMS_DATA;
+  var l=D.loads.find(function(x){return x.id===id;});
+  if(!l)return;
+  var tab=window._loadViewTab||'shipment';
+  var v=function(elId){var el=document.getElementById(elId);return el?el.value:'';};
+  var vf=function(elId){return parseFloat(v(elId))||0;};
+  if(tab==='shipment'){
+    l.commodity=v('vl-commodity')||l.commodity;
+    l.declaredValue=vf('vl-value');
+    var newTrailer=v('vl-trailer');if(newTrailer)l.trailer=newTrailer;
+    l.packages=v('vl-packages');
+    l.weight=v('vl-weight')||l.weight;
+    l.dimensions=v('vl-dims');
+    l.temperature=v('vl-temp');
+    _readCurrentStopFields(l);
+    var firstP=l.stops&&l.stops.find(function(s){return s.type==='P';});
+    var lastD=l.stops&&l.stops.slice().reverse().find(function(s){return s.type==='D';});
+    if(firstP){l.origin=firstP.address;l.pickupName=firstP.name;l.pickupDate=firstP.date;}
+    if(lastD){l.dest=lastD.address;l.delivName=lastD.name;l.deliveryDate=lastD.date;}
+  }else if(tab==='customer'){
+    l.customer=v('vl-customer')||l.customer;
+    l.ref=v('vl-ref')||l.ref;
+    l.bookedBy=v('vl-bookedby')||l.bookedBy;
+    l.paps=v('vl-paps');
+    l.loadType=v('vl-loadtype')||l.loadType;l.shipmentType=l.loadType;
+    l.direction=v('vl-direction')||l.direction;
+  }else if(tab==='revenue'){
+    l.revenue=vf('vl-revenue')||l.revenue;
+    l.declaredValue=vf('vl-value2');
+    if(l.assignedCarrierId)l.carrierCost=vf('vl-carrier-cost');
+  }else if(tab==='dispatch'){
+    var nd=v('vl-driver');if(nd)l.driver=nd;
+    var nt=v('vl-truck');if(nt)l.truck=nt;
+    var ntr=v('vl-trailer2');if(ntr)l.trailer=ntr;
+  }else if(tab==='outsource'){
+    var cid=v('vl-carrier');
+    var cobj=cid?(D.carriers||[]).find(function(c){return c.id===cid;}):null;
+    l.assignedCarrierId=cid;
+    l.carrierName=cobj?cobj.companyName:'';
+    l.carrierCost=vf('vl-carrier-rate');
+    l.carrierRef=v('vl-carrier-ref');
+    if(!l.driverPay&&l.revenue)l.driverPay=Math.round(l.revenue*((D.driverPayRate||28)/100));
+  }
+  if(l.status==='Delivered'||l.status==='DELIVERED'){
+    if(!l.deliveredDate)l.deliveredDate=new Date().toLocaleDateString();
+    l.past=true;
+    if(!l.driverPay&&l.revenue)l.driverPay=Math.round(l.revenue*((D.driverPayRate||28)/100));
+    var dObj=D.drivers.find(function(d){return d.name===l.driver;});
+    if(dObj&&!l._statsCounted){l._statsCounted=true;if(!dObj.stats)dObj.stats={completed:0,pending:0,earnings:0};dObj.stats.completed=(dObj.stats.completed||0)+1;dObj.stats.earnings=(dObj.stats.earnings||0)+(l.driverPay||0);dObj.status='Available';dObj.load=null;}
+    _markLoadPendingInvoice(l);
+  }
+  _fbPushTMS();sfxSuccess();toast('Saved · '+id);
+  tmsViewLoad(id,tab);
+}
+
 
 function tmsSmTruckPanel(l){
   var truckUnit=(l.truck||'').toString().trim();
@@ -9725,48 +9898,11 @@ function tmsTripDetail(tripId){
 
 /* ── SPLIT LOAD ── */
 function tmsSplitLoad(loadId){
-  var D=window.TMS_DATA;
-  var load=D.loads.find(function(l){return l.id===loadId;});
-  if(!load){toast('Load not found');return;}
-  var overlay=document.createElement('div');
-  overlay.id='split-load-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML=
-    '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:400px">'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">'+
-    '<div class="tms-section-title" style="margin:0">Split Load: '+loadId+'</div>'+
-    '<button class="tms-btn" onclick="document.getElementById(\'split-load-overlay\').remove()" style="width:28px;height:28px;padding:0;border-radius:50%;font-size:14px">×</button>'+
-    '</div>'+
-    '<div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.6">This will create two sub-shipments from the parent. Each can be assigned to a different driver. The parent status will roll up when all splits are delivered.</div>'+
-    '<label class="tms-label">Number of Splits</label>'+
-    '<select class="tms-select" id="split-count" style="margin-bottom:14px"><option value="2">2 Splits</option><option value="3">3 Splits</option></select>'+
-    '<div style="display:flex;gap:8px">'+
-    '<button class="tms-btn primary" onclick="tmsConfirmSplit(\''+loadId+'\')" style="flex:1">⚡ Confirm Split</button>'+
-    '<button class="tms-btn" onclick="document.getElementById(\'split-load-overlay\').remove()">Cancel</button>'+
-    '</div></div>';
-  document.body.appendChild(overlay);
+  /* Split = add a pickup or delivery stop to the same load — no new loads created */
+  tmsViewLoad(loadId,'shipment');
+  setTimeout(function(){toast('Use + Add Pickup or + Add Delivery to add a stop to this load');},200);
 }
-
-function tmsConfirmSplit(loadId){
-  var D=window.TMS_DATA;
-  var parent=D.loads.find(function(l){return l.id===loadId;});
-  if(!parent){sfxError();toast('Load not found');return;}
-  var count=parseInt((document.getElementById('split-count')&&document.getElementById('split-count').value)||'2');
-  parent.isSplit=true;parent.status='ASSIGNED';parent.splitOf=count;
-  for(var i=1;i<=count;i++){
-    var splitId=loadId+'-S'+i;
-    var sub=Object.assign({},parent,{
-      id:splitId,parentShipmentId:loadId,isSplit:false,
-      splitIndex:i,splitOf:count,status:'ASSIGNED',
-      legs:[],revenue:Math.round(parent.revenue/count)
-    });
-    D.loads.push(sub);
-  }
-  _fbPushTMS();
-  document.getElementById('split-load-overlay').remove();
-  sfxSuccess();toast('Split into '+count+' sub-shipments');
-  tmsTransport();
-}
+function tmsConfirmSplit(){/* no-op: split no longer creates new loads */}
 
 /* ── ADD RELAY LEG ── */
 function tmsAddRelayLeg(loadId){
