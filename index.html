@@ -4041,7 +4041,8 @@ function tmsAddLoad(postToBoard){
   if(!direction){sfxError();toast('Select a shipment direction first');return;}
   if(!orig||!dest){sfxError();toast('Enter origin and destination');return;}
   var D=window.TMS_DATA;
-  var newId='TOI-'+(1000+D.loads.length+1);
+  var _mCount=D.loads.filter(function(l){return (l.id||'').indexOf('TOI-M')===0;}).length;
+  var newId='TOI-M'+(3923+_mCount+1);
   var ref='REF-'+(8800+Math.floor(Math.random()*100));
   var isOutsourced=assignMode==='outsource'&&carrierId;
   var carrierObj=isOutsourced?(D.carriers||[]).find(function(c){return c.id===carrierId;}):null;
@@ -9481,7 +9482,7 @@ function tmsRateConfirmation(loadId){
   var D=window.TMS_DATA;
   var l=D.loads.find(function(x){return x.id===loadId;});
   if(!l){sfxError();toast('Load not found');return;}
-  var company=(D.settings&&D.settings.companyName)||'4M Transport Inc.';
+  var company='Packfast Transport';
   var companyAddr=(D.settings&&D.settings.address)||'Montreal, QC, Canada';
   var companyPhone=(D.settings&&D.settings.phone)||'';
   var today=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
@@ -9505,7 +9506,7 @@ function tmsRateConfirmation(loadId){
   '</style></head><body><div class="page">'+
   '<div class="hdr">'+
   '<div><h1>'+company+'</h1><div style="font-size:11px;color:#555;margin-top:4px">'+companyAddr+(companyPhone?' · '+companyPhone:'')+'</div></div>'+
-  '<div style="text-align:right"><div class="badge">Rate Confirmation</div><div style="font-size:10px;color:#555;margin-top:6px">Issue Date: '+today+'</div><div style="font-size:12px;font-weight:600;color:#1a1a2e;margin-top:4px">Load: '+l.id+(l.ref?' · Ref: '+l.ref:'')+'</div></div>'+
+  '<div style="text-align:right"><div class="badge">Rate Confirmation</div><div style="font-size:10px;color:#555;margin-top:6px">Issue Date: '+today+'</div><div style="font-size:12px;font-weight:600;color:#1a1a2e;margin-top:4px">Load: '+l.id+'</div></div>'+
   '</div>'+
   '<h2>Carrier</h2>'+
   '<table><tbody>'+
