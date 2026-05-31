@@ -3387,101 +3387,154 @@ function _tmsDispatch(key){
   else if(key==='tutorial')tmsTutorial();
 }
 function tmsTutorial(){
-  /* ── Load lifecycle steps (numbered flow) ── */
+  /* ── Load lifecycle steps ── */
   var lifecycle=[
     {
-      icon:'🚛',num:'1',title:'Create a Load',where:'Loads → Transport',
-      body:'In the <strong>New Shipment</strong> form, enter the <strong>Pickup Name</strong> (e.g. Walmart DC) and <strong>Pickup Address</strong>, then the <strong>Delivery Name</strong> and <strong>Delivery Address</strong>. The address field auto-suggests from your history as you type. Fill in the customer, driver, trailer type, and revenue. Click <strong>Create Shipment</strong>. The load appears in the Active Loads table with status <em>Assigned</em>.'
+      icon:'📋',num:'1',title:'Create a Load',where:'Loads → Load Entry',
+      body:'Go to <strong>Loads → Load Entry</strong>. Select the shipment type (FTL / LTL) and direction (Outbound, Inbound, Local, Provincial, or Global). The form expands — fill in <strong>Pickup Name</strong>, <strong>Pickup Address</strong>, <strong>Delivery Name</strong>, and <strong>Delivery Address</strong>. Address fields auto-suggest from your saved history.<br><br>Then choose <strong>who handles the load</strong>:<br>• <strong>🚛 Internal Driver</strong> — pick a driver and truck from your fleet<br>• <strong>🧑‍💼 Owner Operator</strong> — pick an OO and set their agreed pay amount<br>• <strong>🤝 Outsource to Carrier</strong> — pick an approved carrier and enter their rate<br><br>Fill in the customer, revenue, dates, and click <strong>Create Shipment</strong>. The load is assigned an ID in the format <em>TOI-M3924</em> and appears in Active Loads.'
     },
     {
-      icon:'📧',num:'2',title:'Dispatch the Driver',where:'Loads → Dispatch',
-      body:'Go to <strong>Loads → Dispatch</strong>. Find the load and click <strong>Dispatch</strong>. The driver receives an email instantly with the pickup address, delivery address, and load reference. The load status updates to <em>En Route to Pickup</em>.'
+      icon:'📧',num:'2',title:'Dispatch the Driver',where:'Load View → Driver & Equipment tab',
+      body:'Click any load in <strong>Loads → Active Loads</strong> to open the full load view. Go to the <strong>Driver & Equipment</strong> tab. You will see the three-way assignment toggle (Internal / Owner Operator / Carrier). Confirm or change the driver and equipment, then click <strong>📧 Send Dispatch Email</strong>. The driver gets an instant email with pickup address, delivery address, and load reference. The dispatch date and email are recorded on the load.'
     },
     {
-      icon:'📍',num:'3',title:'Update Status Along the Way',where:'Loads → Transport → View',
-      body:'Open any load and use the <strong>Status</strong> dropdown. Move it through the stages as the driver progresses:<br><br><span style="color:var(--accent2)">Assigned → En Route to Pickup → Picked Up → In Transit → At Border → Delivered</span><br><br>The client is <strong>automatically emailed</strong> on every status change so they always know where their freight is. The load updates live on the Dashboard board.'
+      icon:'📍',num:'3',title:'Track Status in Real Time',where:'Load View → Status dropdown',
+      body:'Open any load and use the <strong>Status</strong> dropdown in the header to advance it through stages:<br><br><span style="color:var(--accent2)">Assigned → En Route to Pickup → Picked Up → In Transit → At Border → Delivered</span><br><br>The client is <strong>automatically emailed</strong> on every change. The Dashboard board updates live. You can also update status from <strong>Loads → Dispatch Center</strong>.'
     },
     {
       icon:'🛃',num:'4',title:'File Customs (Cross-Border Loads)',where:'Operations → Customs',
-      body:'For US-bound loads file <strong>ACE</strong>; for Canada-bound file <strong>ACI</strong>. Go to <strong>Operations → Customs</strong>, select the filing type, pick the driver and truck, enter the port of entry and ETA, then click <strong>Submit</strong>. PackFast files directly with BorderConnect. Check clearance status from the same screen. <em>File at least 1 hour before border arrival.</em>'
+      body:'For US-bound loads file <strong>ACE</strong>; for Canada-bound file <strong>ACI</strong>. Go to <strong>Operations → Customs</strong>, select the filing type, pick the driver and truck, enter the port of entry and ETA, then click <strong>Submit</strong>. PackFast files directly with BorderConnect. Status updates (cleared / rejected) are visible from the same screen. <em>File at least 1 hour before border arrival.</em>'
     },
     {
-      icon:'✅',num:'5',title:'Mark as Delivered',where:'Loads → Transport → View',
-      body:'Open the load and set Status to <strong>Delivered</strong>. Three things happen automatically:<br><br>1. The load moves to <strong>History</strong> (click the History button in Transport to find it).<br>2. The client receives a delivery confirmation email.<br>3. The load appears in <strong>Business → Invoices</strong> under "Delivered — Awaiting Invoice".<br><br>A toast notification reminds you: <em>"Invoice pending under Business → Invoices"</em>.'
+      icon:'✅',num:'5',title:'Mark as Delivered — Pay is Auto-Stamped',where:'Load View → Status: Delivered',
+      body:'Set Status to <strong>Delivered</strong>. Three things happen automatically:<br><br>1. The load moves to <strong>History</strong> — still fully clickable and editable.<br>2. The client receives a delivery confirmation email.<br>3. Driver pay is calculated and shows in <strong>Fleet → Driver Pay</strong>. If the load was on an owner operator, their pay appears in <strong>Fleet → OO Pay</strong>.<br>4. The load queues in <strong>Business → Invoices</strong> under "Awaiting Invoice".'
     },
     {
-      icon:'🧾',num:'6',title:'Create the Invoice',where:'Business → Invoices',
-      body:'Go to <strong>Business → Invoices</strong>. At the top you will see the <strong>"Delivered — Awaiting Invoice"</strong> section listing every delivered load that has not been invoiced yet. Click <strong>Create Invoice →</strong> on a load row — the form below auto-fills with the client, a description, and the revenue amount. Confirm and click <strong>+ Create</strong>. The load leaves the pending list and the invoice appears in <strong>All Invoices</strong> as <em>Unpaid</em>. When payment arrives, click <strong>Mark Paid</strong>.'
+      icon:'🧾',num:'6',title:'Invoice the Client',where:'Business → Invoices',
+      body:'Go to <strong>Business → Invoices</strong>. The <strong>"Delivered — Awaiting Invoice"</strong> section lists every load ready to bill. Click <strong>Create Invoice →</strong> — the form auto-fills with the client, load reference, and revenue. Confirm and click <strong>+ Create</strong>. The invoice appears in <strong>All Invoices</strong> as <em>Unpaid</em>. When payment arrives, click <strong>Mark Paid</strong>.'
     }
   ];
 
-  /* ── Reference cards ── */
+  /* ── Module reference cards ── */
   var extras=[
-    {icon:'👥',title:'Clients & Carriers',body:'<strong>Business → Customers</strong> — add clients and their billing email (this is the address that gets automatic load-status emails). <strong>Business → Carriers</strong> — manage your carrier list with safety ratings and equipment details.'},
-    {icon:'💰',title:'Driver Pay & Finances',body:'<strong>Fleet → Driver Pay</strong> shows each driver\'s completed loads, earnings, and pay log. <strong>Business → Finances</strong> tracks revenue and expenses. <strong>Business → Performance</strong> shows overall KPIs by driver and customer.'},
-    {icon:'⚙️',title:'Fleet & Equipment',body:'<strong>Fleet → Trucks</strong> and <strong>Trailers</strong> show which unit is assigned to which load. <strong>Fleet → Drivers</strong> shows availability and current assignment. Assign trucks and trailers directly from the load form.'},
-    {icon:'📊',title:'Dashboard',body:'The <strong>Dashboard</strong> is your birds-eye view — active load count, pending dispatch, delivered today, and a live board of every active load. Click any row to open the full load detail in a side panel.'}
+    {
+      icon:'📂',title:'Active Loads & History',
+      body:'<strong>Loads → Active Loads</strong> shows all in-progress loads not outsourced to a carrier. Each row shows Load ID, <span style="color:var(--accent2)">Client</span>, Route, Driver/OO, Status, and Revenue. Click any row to open the full tabbed editor. Owner operator loads show a purple <strong>OO</strong> badge; outsourced loads move to Logistics.<br><br>Click <strong>History</strong> to view all delivered loads — they are fully editable, not read-only.'
+    },
+    {
+      icon:'📝',title:'Load View — Tabbed Editor',
+      body:'Every load opens in a full-page editor with five tabs:<br>• <strong>Shipment</strong> — commodity, weight, dimensions, temperature, and stop cards (multiple pickups and deliveries, each with date, appointment, contact, package count, and notes). Use <strong>+ Add Pickup</strong> / <strong>+ Add Delivery</strong> to add stops.<br>• <strong>Customer</strong> — client, reference #, PAPS, load type, direction<br>• <strong>Revenue</strong> — revenue, declared value, net income predictor<br>• <strong>Driver & Equipment</strong> — internal driver, owner operator, or outsource toggle + equipment selection<br>• <strong>Outsource</strong> — legacy carrier assignment (also accessible from the Logistics module)'
+    },
+    {
+      icon:'🤝',title:'Outsourced Loads & Rate Confirmations',
+      body:'When a load is assigned to a carrier (via <strong>Outsource to Carrier</strong> in the assignment toggle), it moves out of Active Loads and appears exclusively in <strong>Operations → Logistics</strong>.<br><br>From the Logistics table, click <strong>📄 Rate Confirmation</strong> on any row to generate a printable PDF with the carrier\'s rate, pickup/delivery details, load specs, and a signature block. The header reads <em>Packfast Transport · Laval, QC · dispatch@pf-canada.com · 438-223-1180</em>.'
+    },
+    {
+      icon:'🧑‍💼',title:'Owner Operators',
+      body:'Owner operators use their own truck. Add them at <strong>Fleet → Owner Ops</strong> (name, company, phone, MC#, and a default pay rate % of revenue). Activate or deactivate them as needed.<br><br>When creating or editing a load, select <strong>🧑‍💼 Owner Operator</strong> in the assignment area and choose the OO and their agreed pay amount for that load. OO loads appear in Active Loads with a purple <strong>OO</strong> badge, not in Logistics.'
+    },
+    {
+      icon:'💵',title:'Driver Pay & OO Pay',
+      body:'Both pay screens are in the <strong>Fleet</strong> group and work identically — weekly view, grouped by person, with a "Mark Paid" button per week.<br><br><strong>Fleet → Driver Pay</strong> — shows internal drivers with completed loads that week. Pay = load revenue × pay rate %. The global rate is adjustable at the bottom of the screen.<br><br><strong>Fleet → OO Pay</strong> — shows owner operators. Pay = the dollar amount set when the load was created (or % rate from their profile if no fixed amount was entered). Use the week tabs or type a week number to jump to any week.'
+    },
+    {
+      icon:'👥',title:'Clients & Carriers',
+      body:'<strong>Business → Customers</strong> — add clients with billing email. That email receives automatic status updates and delivery confirmations on every load. Every load shows the client name in orange on the Active Loads table and in the load view header.<br><br><strong>Business → Carriers</strong> — manage approved carriers with safety ratings. Only approved carriers appear in the outsource dropdown when creating a load. Carriers can be onboarded with a link and vetted before approval.'
+    },
+    {
+      icon:'⚙️',title:'Fleet & Equipment',
+      body:'<strong>Fleet → Trucks</strong> and <strong>Fleet → Trailers</strong> — add and track your units. Equipment assigned to a load shows the load ID. <strong>Fleet → Drivers</strong> — roster with licence info, availability status, and current load assignment. Drivers on a load show as <em>On Load</em>; after delivery they return to <em>Available</em> automatically.'
+    },
+    {
+      icon:'📊',title:'Dashboard & Performance',
+      body:'The <strong>Dashboard</strong> shows a live summary — active loads, pending dispatch, delivered today, and a board of every in-flight load. Click any row to jump directly to that load\'s edit view.<br><br><strong>Business → Performance</strong> shows KPIs by driver and customer — loads completed, revenue generated, and pay percentage. <strong>Business → Finances</strong> tracks total revenue and expenses over time.'
+    }
   ];
 
-  var html='<div style="max-width:740px;margin:0 auto;padding:24px 16px">';
+  var html='<div style="max-width:780px;margin:0 auto;padding:24px 16px">';
 
   /* Header */
-  html+='<div style="margin-bottom:24px">';
-  html+='<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PackFast TMS — Tutorial</div>';
+  html+='<div style="margin-bottom:26px">';
+  html+='<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent);text-transform:uppercase;margin-bottom:8px">PackFast TMS · Guide</div>';
   html+='<div style="font-size:22px;font-weight:300;color:var(--text);margin-bottom:6px">Load Lifecycle — Create to Invoice</div>';
-  html+='<div style="font-size:12px;color:var(--text3);line-height:1.65">Follow these 6 steps to move a load from creation through delivery and invoicing. Every step is linked to the exact screen in the app.</div>';
+  html+='<div style="font-size:12px;color:var(--text3);line-height:1.65">Follow these 6 steps to move a load from creation through delivery and invoicing. Every step links to the exact screen.</div>';
   html+='</div>';
 
   /* Flow strip */
-  html+='<div style="display:flex;align-items:center;gap:0;margin-bottom:24px;overflow-x:auto;padding-bottom:4px">';
-  var flowLabels=['Create','Dispatch','In Transit','Customs','Delivered','Invoice'];
-  var flowIcons=['🚛','📧','📍','🛃','✅','🧾'];
+  html+='<div style="display:flex;align-items:center;gap:0;margin-bottom:28px;overflow-x:auto;padding-bottom:4px">';
+  var flowLabels=['Create','Dispatch','Track','Customs','Deliver','Invoice'];
+  var flowIcons=['📋','📧','📍','🛃','✅','🧾'];
   flowLabels.forEach(function(lbl,i){
+    var last=i===flowLabels.length-1;
     html+='<div style="display:flex;align-items:center;flex-shrink:0">';
     html+='<div style="display:flex;flex-direction:column;align-items:center;gap:4px">';
-    html+='<div style="width:32px;height:32px;border-radius:50%;background:rgba(224,123,32,'+(i===5?'0.25':'0.1')+');border:0.5px solid rgba(224,123,32,'+(i===5?'0.5':'0.25')+');display:flex;align-items:center;justify-content:center;font-size:14px">'+flowIcons[i]+'</div>';
-    html+='<div style="font-size:8px;color:'+(i===5?'var(--accent)':'var(--text3)')+';letter-spacing:0.05em;white-space:nowrap">'+lbl+'</div>';
+    html+='<div style="width:34px;height:34px;border-radius:50%;background:rgba(224,123,32,'+(last?'0.22':'0.09')+');border:0.5px solid rgba(224,123,32,'+(last?'0.5':'0.22')+');display:flex;align-items:center;justify-content:center;font-size:15px">'+flowIcons[i]+'</div>';
+    html+='<div style="font-size:8px;color:'+(last?'var(--accent)':'var(--text3)')+';letter-spacing:0.05em;white-space:nowrap;margin-top:2px">'+lbl+'</div>';
     html+='</div>';
-    if(i<flowLabels.length-1)html+='<div style="width:20px;height:1px;background:rgba(224,123,32,0.2);margin:0 2px;margin-bottom:14px;flex-shrink:0"></div>';
+    if(!last)html+='<div style="width:22px;height:1px;background:rgba(224,123,32,0.18);margin:0 3px;margin-bottom:14px;flex-shrink:0"></div>';
     html+='</div>';
   });
   html+='</div>';
 
   /* Lifecycle step cards */
-  html+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">';
+  html+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:30px">';
   lifecycle.forEach(function(s){
     html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:14px;padding:18px 20px;display:flex;gap:16px;align-items:flex-start">';
     html+='<div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0">';
-    html+='<div style="width:36px;height:36px;border-radius:10px;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.2);display:flex;align-items:center;justify-content:center;font-size:17px">'+s.icon+'</div>';
-    html+='<div style="font-size:9px;color:var(--accent);font-weight:600">STEP '+s.num+'</div>';
+    html+='<div style="width:38px;height:38px;border-radius:11px;background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.2);display:flex;align-items:center;justify-content:center;font-size:18px">'+s.icon+'</div>';
+    html+='<div style="font-size:9px;color:var(--accent);font-weight:600;letter-spacing:0.06em">'+s.num+' / 6</div>';
     html+='</div>';
     html+='<div style="flex:1;min-width:0">';
-    html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px">'+s.title+'</div>';
-    html+='<div style="font-size:9px;color:var(--accent2);letter-spacing:0.08em;margin-bottom:8px;background:rgba(245,166,35,0.08);border:0.5px solid rgba(245,166,35,0.2);border-radius:6px;padding:2px 8px;display:inline-block">'+s.where+'</div>';
-    html+='<div style="font-size:12px;color:var(--text3);line-height:1.75">'+s.body+'</div>';
+    html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:4px">'+s.title+'</div>';
+    html+='<div style="font-size:9px;color:var(--accent2);letter-spacing:0.08em;margin-bottom:10px;background:rgba(245,166,35,0.08);border:0.5px solid rgba(245,166,35,0.2);border-radius:6px;padding:2px 9px;display:inline-block">'+s.where+'</div>';
+    html+='<div style="font-size:12px;color:var(--text3);line-height:1.8">'+s.body+'</div>';
     html+='</div>';
     html+='</div>';
   });
   html+='</div>';
 
-  /* Reference section */
-  html+='<div style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:10px">Other Modules</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:24px">';
+  /* Module reference grid */
+  html+='<div style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:12px">Module Reference</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px;margin-bottom:28px">';
   extras.forEach(function(s){
-    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:14px 16px">';
-    html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">';
-    html+='<div style="font-size:16px">'+s.icon+'</div>';
+    html+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;padding:16px 18px">';
+    html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:9px">';
+    html+='<div style="font-size:17px">'+s.icon+'</div>';
     html+='<div style="font-size:12px;font-weight:500;color:var(--text)">'+s.title+'</div>';
     html+='</div>';
-    html+='<div style="font-size:11px;color:var(--text3);line-height:1.7">'+s.body+'</div>';
+    html+='<div style="font-size:11px;color:var(--text3);line-height:1.75">'+s.body+'</div>';
     html+='</div>';
+  });
+  html+='</div>';
+
+  /* Quick nav strip */
+  html+='<div style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;margin-bottom:10px">Quick Navigation</div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:28px">';
+  var quickLinks=[
+    {label:'Load Entry',k:'loadentry',g:'loads'},
+    {label:'Active Loads',k:'transport',g:'loads'},
+    {label:'Dispatch Center',k:'dispatch',g:'loads'},
+    {label:'Logistics',k:'logistics',g:'operations'},
+    {label:'Customs',k:'customs',g:'operations'},
+    {label:'Owner Ops',k:'ownerops',g:'fleet'},
+    {label:'Driver Pay',k:'driverpay',g:'fleet'},
+    {label:'OO Pay',k:'oopay',g:'fleet'},
+    {label:'Drivers',k:'drivers',g:'fleet'},
+    {label:'Carriers',k:'carriers',g:'business'},
+    {label:'Customers',k:'customers',g:'business'},
+    {label:'Invoices',k:'invoices',g:'business'},
+    {label:'Finances',k:'finances',g:'business'},
+    {label:'Performance',k:'performance',g:'business'}
+  ];
+  quickLinks.forEach(function(ql){
+    html+='<button onclick="tmsTab(\''+ql.k+'\')" style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;font-size:10px;color:var(--text2);cursor:pointer;font-family:inherit;letter-spacing:0.04em;transition:all 0.15s" onmouseover="this.style.borderColor=\'rgba(224,123,32,0.45)\';this.style.color=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.color=\'var(--text2)\'">'+ql.label+'</button>';
   });
   html+='</div>';
 
   /* Help footer */
   html+='<div style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.2);border-radius:12px;padding:16px 20px">';
   html+='<div style="font-size:11px;color:var(--accent);font-weight:500;margin-bottom:5px">Need help?</div>';
-  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">Contact dispatch at <a href="mailto:dispatch@pf-canada.com" style="color:var(--accent);text-decoration:none">dispatch@pf-canada.com</a> or call Operations at <a href="tel:4385216112" style="color:var(--accent);text-decoration:none">438-521-6112</a>.</div>';
+  html+='<div style="font-size:12px;color:var(--text3);line-height:1.7">Contact dispatch at <a href="mailto:dispatch@pf-canada.com" style="color:var(--accent);text-decoration:none">dispatch@pf-canada.com</a> or call Operations at <a href="tel:4382231180" style="color:var(--accent);text-decoration:none">438-223-1180</a>.</div>';
   html+='</div>';
 
   html+='</div>';
