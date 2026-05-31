@@ -3562,12 +3562,10 @@ function tmsTab(key){
 }
 function tmsDashboard(){
   var D=window.TMS_DATA;
-  var FM=window.FM_LOADS||[];
   var sc={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
 
-  /* ── Merge FM loads + TMS loads for stats ── */
-  var tmsAsFM=D.loads.map(function(l){return{revenue:parseFloat(l.revenue)||0,date:l.created||'',driver:l.driver||'—',customer:l.customer||'—',origin:l.origin||'',dest:l.dest||'',dispatcher:l.loadType||''};});
-  var allLoads=FM.concat(tmsAsFM);
+  /* ── Use D.loads as single source of truth (FM loads are already merged in) ── */
+  var allLoads=D.loads.map(function(l){return{revenue:parseFloat(l.revenue)||0,date:l.created||l.date||'',driver:l.driver||'—',customer:l.customer||l.client||'—',origin:l.origin||'',dest:l.dest||'',dispatcher:l.loadType||l.type||''};});
   var monthly={},drvS={},custS={},catS={};
   var totalFMrev=0,cadRev=0,usdRev=0;
   allLoads.forEach(function(l){
@@ -6347,7 +6345,10 @@ function tmsTmsFinances(){
   if(!D.pendingInvoiceLoads)D.pendingInvoiceLoads=[];
 
   /* ── Compute from real load + invoice data ── */
-  var deliveredLoads=D.loads.filter(function(l){return l.status==='Delivered'||l.status==='DELIVERED';});
+  /* Count all completed loads: explicitly Delivered, marked past, or historical (HIS-) */
+  var deliveredLoads=D.loads.filter(function(l){
+    return l.status==='Delivered'||l.status==='DELIVERED'||l.past||(l.id&&l.id.indexOf('HIS-')===0);
+  });
   var grossRev=deliveredLoads.reduce(function(s,l){return s+(parseFloat(l.revenue)||0);},0);
   var exp=D.finances.expenses||0;
   var net=grossRev-exp;
