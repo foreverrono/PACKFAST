@@ -1424,15 +1424,28 @@ function tmsLookupLocation(name){
   var n=name.toLowerCase().trim();
   return tmsGetLocationBook().find(function(e){return e.name.toLowerCase()===n;})||null;
 }
-function tmsUpsertLocation(name,address,phone){
-  if(!name||!name.trim()||!address||!address.trim()||address==='—')return;
+/* ── Location records carry a stable id so stops can bind by reference ── */
+function _newLocId(){return 'LOC-'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function tmsGetLocation(id){
+  if(!id)return null;
+  var D=window.TMS_DATA;
+  return (D.locationBook||[]).find(function(e){return e.id===id;})||null;
+}
+/* Find or create the canonical location record for a name+address pair; returns it (with id) */
+function tmsResolveLoc(name,address,phone){
+  if(!name||!name.trim()||!address||!address.trim()||address==='—')return null;
   var D=window.TMS_DATA;
   if(!D.locationBook)D.locationBook=[];
   var n=name.trim().toLowerCase(),a=address.trim().toLowerCase();
-  /* Dedupe on name + address so the same name at two addresses is two entries */
-  var ex=D.locationBook.find(function(e){return e.name.toLowerCase()===n&&(e.address||'').toLowerCase()===a;});
-  if(ex){if(phone&&phone.trim())ex.phone=phone.trim();}
-  else D.locationBook.push({name:name.trim(),address:address.trim(),phone:(phone||'').trim()});
+  var ex=D.locationBook.find(function(e){return (e.name||'').toLowerCase()===n&&(e.address||'').toLowerCase()===a;});
+  if(ex){if(!ex.id)ex.id=_newLocId();if(phone&&phone.trim()&&!ex.phone)ex.phone=phone.trim();return ex;}
+  var rec={id:_newLocId(),name:name.trim(),address:address.trim(),phone:(phone||'').trim()};
+  D.locationBook.push(rec);
+  return rec;
+}
+/* Back-compat wrapper: learn a location on save (now id-aware) */
+function tmsUpsertLocation(name,address,phone){
+  return tmsResolveLoc(name,address,phone);
 }
 /* Directory view: every saved/used location with a live "N loads" usage count
    (all loads using that name+address, pickup or delivery), most-used first. */
@@ -1443,7 +1456,7 @@ function tmsGetDirectory(){
   function tally(name,addr,phone){
     if(!name||!name.trim()||!addr||!addr.trim()||addr==='—')return;
     var k=key(name,addr);
-    if(!map[k])map[k]={name:name.trim(),address:addr.trim(),phone:(phone||'').trim(),count:0};
+    if(!map[k])map[k]={id:null,name:name.trim(),address:addr.trim(),phone:(phone||'').trim(),count:0};
     map[k].count++;
     if(phone&&phone.trim()&&!map[k].phone)map[k].phone=phone.trim();
   }
@@ -1460,9 +1473,10 @@ function tmsGetDirectory(){
   /* Include manually-added directory entries even if not yet on any load */
   (D.locationBook||[]).forEach(function(e){
     if(!e||!e.name||!e.address)return;
+    if(!e.id)e.id=_newLocId();
     var k=key(e.name,e.address);
-    if(!map[k])map[k]={name:e.name,address:e.address,phone:e.phone||'',count:0};
-    else if(e.phone&&!map[k].phone)map[k].phone=e.phone;
+    if(!map[k])map[k]={id:e.id,name:e.name,address:e.address,phone:e.phone||'',count:0};
+    else{map[k].id=e.id;if(e.phone&&!map[k].phone)map[k].phone=e.phone;}
   });
   return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){
     return b.count-a.count || (a.name.toLowerCase()<b.name.toLowerCase()?-1:1);
@@ -4099,7 +4113,9 @@ function tmsRenderLocDirectory(side,query){
     return '<div onclick="tmsLocPick(\''+side+'\','+i+')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:0.5px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(224,123,32,0.06)\'" onmouseleave="this.style.background=\'\'">'+
       '<div style="min-width:0;flex:1"><div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_locEsc(e.name)+'</div>'+
       '<div style="font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div></div>'+
-      badge+
+      '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'+badge+
+        '<button onclick="tmsLocEditLoc(\''+side+'\','+i+',event)" title="Edit this location (updates everywhere)" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:2px 4px;line-height:1">✎</button>'+
+      '</div>'+
     '</div>';
   }).join('')+(all.length>CAP?'<div style="font-size:10px;color:var(--text3);text-align:center;padding:6px">Showing top '+CAP+' of '+all.length+' — type to search</div>':'');
 }
@@ -4563,6 +4579,113 @@ function tmsParseEdi(){
   }catch(e){sfxError();toast('EDI parse error: '+(e.message||'Check format'));}
 }
 
+/* ── STOP-CARD LOCATION SELECTOR ────────────────────────────────────────
+   The name field is a type-to-search picker over the directory; the address
+   is read-only and always belongs to the selected location record (by id). */
+function _stopDisplay(s){
+  var rec=s&&s.locId?tmsGetLocation(s.locId):null;
+  return rec ? {name:rec.name,address:rec.address}
+             : {name:(s&&(s.name||s.location))||'',address:(s&&s.address)||''};
+}
+function tmsBindStopName(loadId,idx){
+  var nameEl=document.getElementById('vl-s'+idx+'-name');
+  if(!nameEl||nameEl.dataset.stopacBound)return;
+  nameEl.dataset.stopacBound='1';
+  var wrap=document.createElement('div');wrap.className='ac-wrap';
+  var parent=nameEl.parentNode;parent.insertBefore(wrap,nameEl);wrap.appendChild(nameEl);
+  var drop=document.createElement('div');drop.className='ac-drop';wrap.appendChild(drop);
+  var items=[];
+  function boundName(){
+    var l=window.TMS_DATA.loads.find(function(x){return x.id===loadId;});
+    var s=l&&l.stops&&l.stops[idx];return s?_stopDisplay(s).name:'';
+  }
+  function render(q){
+    items=tmsGetDirectory().filter(function(e){
+      return !q||e.name.toLowerCase().indexOf(q)!==-1||(e.address||'').toLowerCase().indexOf(q)!==-1;
+    }).slice(0,8);
+    var rows=items.map(function(e,i){
+      return '<div class="ac-item" data-i="'+i+'" style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--text)">'+_locEsc(e.name)+'</span><span style="color:var(--text3);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%">'+_locEsc(e.address)+'</span></div>';
+    }).join('');
+    rows+='<div class="ac-item" data-add="1" style="color:var(--accent);font-weight:500">+ Add new location…</div>';
+    drop.innerHTML=rows;drop.classList.add('show');
+    drop.querySelectorAll('.ac-item').forEach(function(item){
+      item.addEventListener('mousedown',function(e){e.preventDefault();});
+      item.addEventListener('click',function(){
+        drop.classList.remove('show');
+        if(this.dataset.add){tmsStopAddLoc(loadId,idx);return;}
+        var e=items[parseInt(this.dataset.i,10)];if(e)_bindStopToLoc(loadId,idx,e);
+      });
+    });
+  }
+  nameEl.addEventListener('focus',function(){render(this.value.toLowerCase().trim());});
+  nameEl.addEventListener('input',function(){render(this.value.toLowerCase().trim());});
+  nameEl.addEventListener('blur',function(){var self=this;setTimeout(function(){drop.classList.remove('show');self.value=boundName();},180);});
+}
+function _bindStopToLoc(loadId,idx,entry){
+  var l=window.TMS_DATA.loads.find(function(x){return x.id===loadId;});
+  if(!l||!l.stops||!l.stops[idx])return;
+  _readCurrentStopFields(l);
+  var rec=entry.id?tmsGetLocation(entry.id):null;
+  if(!rec)rec=tmsResolveLoc(entry.name,entry.address,entry.phone);
+  if(!rec)return;
+  var s=l.stops[idx];
+  s.locId=rec.id;s.name=rec.name;s.address=rec.address;
+  if(rec.phone&&!s.phone)s.phone=rec.phone;
+  if(typeof sfxNav==='function')sfxNav();
+  tmsViewLoad(loadId,'shipment');
+}
+function _locOverlay(id,title,sub,nameV,addrV,phoneV,saveCall){
+  var ex=document.getElementById(id);if(ex)ex.remove();
+  var ov=document.createElement('div');ov.id=id;
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:18px;max-width:460px;width:100%">'+
+    '<div style="font-size:14px;color:var(--text);font-weight:500;margin-bottom:4px">'+title+'</div>'+
+    (sub?'<div style="font-size:10px;color:var(--text3);margin-bottom:12px">'+sub+'</div>':'<div style="height:8px"></div>')+
+    '<div style="display:flex;flex-direction:column;gap:8px">'+
+      '<div><label class="tms-label">Name</label><input class="tms-input" id="'+id+'-name" value="'+_locEsc(nameV)+'" placeholder="e.g. Blue Tech Montreal"></div>'+
+      '<div><label class="tms-label">Address</label><input class="tms-input" id="'+id+'-addr" value="'+_locEsc(addrV)+'" placeholder="3600 Bd Pitfield, Pierrefonds, QC"></div>'+
+      '<div><label class="tms-label">Phone (optional)</label><input class="tms-input" id="'+id+'-phone" value="'+_locEsc(phoneV)+'" placeholder="514-555-0100"></div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">'+
+      '<button class="tms-btn" onclick="document.getElementById(\''+id+'\').remove()">Cancel</button>'+
+      '<button class="tms-btn primary" onclick="'+saveCall+'">Save</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+  setTimeout(function(){var n=document.getElementById(id+'-name');if(n)n.focus();},50);
+}
+function tmsStopAddLoc(loadId,idx){
+  _locOverlay('locadd-overlay','➕ Add New Location','Name + address are saved together and locked as a pair.','','','','tmsStopAddLocSave(\''+loadId+'\','+idx+')');
+}
+function tmsStopAddLocSave(loadId,idx){
+  var name=((document.getElementById('locadd-overlay-name')||{}).value||'').trim();
+  var addr=((document.getElementById('locadd-overlay-addr')||{}).value||'').trim();
+  var phone=((document.getElementById('locadd-overlay-phone')||{}).value||'').trim();
+  if(!name||!addr){if(typeof sfxError==='function')sfxError();toast('Enter a name and address');return;}
+  var rec=tmsResolveLoc(name,addr,phone);
+  var ov=document.getElementById('locadd-overlay');if(ov)ov.remove();
+  if(typeof _fbPushTMS==='function')_fbPushTMS();
+  _bindStopToLoc(loadId,idx,rec);
+}
+/* Directory edit — change a location's address/phone; propagates to every stop bound to it */
+function tmsLocEditLoc(side,idx,ev){
+  if(ev&&ev.stopPropagation)ev.stopPropagation();
+  var e=(_locDir[side]||[])[idx];if(!e)return;
+  _locOverlay('locedit-overlay','✎ Edit Location','Updates this location everywhere it is used.',e.name,e.address,e.phone||'','tmsLocEditSave(\''+side+'\','+idx+')');
+}
+function tmsLocEditSave(side,idx){
+  var e=(_locDir[side]||[])[idx];if(!e)return;
+  var name=((document.getElementById('locedit-overlay-name')||{}).value||'').trim();
+  var addr=((document.getElementById('locedit-overlay-addr')||{}).value||'').trim();
+  var phone=((document.getElementById('locedit-overlay-phone')||{}).value||'').trim();
+  if(!name||!addr){if(typeof sfxError==='function')sfxError();toast('Name and address required');return;}
+  var rec=e.id?tmsGetLocation(e.id):tmsResolveLoc(e.name,e.address,e.phone);
+  if(rec){rec.name=name;rec.address=addr;rec.phone=phone;}
+  var ov=document.getElementById('locedit-overlay');if(ov)ov.remove();
+  if(typeof _fbPushTMS==='function')_fbPushTMS();
+  if(typeof sfxSuccess==='function')sfxSuccess();toast('Location updated');
+  tmsRenderLocDirectory(side,(document.getElementById('tl-'+side+'-search')||{}).value||'');
+}
 function tmsViewLoad(id,tab){
   var D=window.TMS_DATA;
   var l=D.loads.find(function(x){return x.id===id;});
@@ -4573,6 +4696,8 @@ function tmsViewLoad(id,tab){
     l.stops=[];
     if(l.origin||l.pickupName)l.stops.push({type:'P',name:l.pickupName||'',address:l.origin||'',date:l.pickupDate||'',appointment:'',refNo:'',contact:'',phone:l.pickupPhone||'',package:'',weight:l.weight||'',temp:'',unitType:'',note:''});
     if(l.dest||l.delivName)l.stops.push({type:'D',name:l.delivName||'',address:l.dest||'',date:l.deliveryDate||'',appointment:'',refNo:'',contact:'',phone:l.delivPhone||'',package:'',weight:'',temp:'',unitType:'',note:l.notes||''});
+    /* Bind freshly-bootstrapped stops to location records so name+address stay paired */
+    l.stops.forEach(function(s){if(!s.locId&&s.name&&s.address&&s.address!=='—'){var rec=tmsResolveLoc(s.name,s.address,s.phone);if(rec)s.locId=rec.id;}});
   }
   /* Restore saved trip order, then normalize to a 1..N sequence in array order */
   if(l.stops&&l.stops.length&&l.stops.every(function(s){return typeof s.sequence==='number';})){
@@ -4622,6 +4747,7 @@ function tmsViewLoad(id,tab){
         var isP=s.type==='P';
         var cc=isP?'#4caf50':'#f44336';var lbl=isP?'P':'D';
         var seq=s.sequence||(idx+1);var lastIdx=l.stops.length-1;
+        var _sd=_stopDisplay(s);
         var arrowSt='background:var(--surface);border:0.5px solid var(--border);border-radius:6px;color:var(--text3);font-size:10px;width:22px;height:19px;line-height:1;cursor:pointer;padding:0';
         content+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden">'+
           '<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">'+
@@ -4636,8 +4762,8 @@ function tmsViewLoad(id,tab){
             '</div>'+
           '</div>'+
           '<div style="flex:1;display:flex;flex-direction:column;gap:5px">'+
-          '<input class="tms-input" id="vl-s'+idx+'-name" value="'+(s.name||'')+'" placeholder="Company / Location Name" style="font-size:13px;font-weight:500">'+
-          '<input class="tms-input" id="vl-s'+idx+'-addr" value="'+(s.address||'')+'" placeholder="Full Address" style="font-size:11px">'+
+          '<input class="tms-input" id="vl-s'+idx+'-name" value="'+_locEsc(_sd.name)+'" placeholder="🔍 Type to select a location…" autocomplete="off" style="font-size:13px;font-weight:500">'+
+          '<input class="tms-input" id="vl-s'+idx+'-addr" value="'+_locEsc(_sd.address)+'" placeholder="Address — set by location" readonly tabindex="-1" title="Address is set by the selected location — edit it from the directory" style="font-size:11px;color:var(--text3);background:rgba(255,255,255,0.02);cursor:default">'+
           '</div>'+
           '<button onclick="tmsRemoveStop(\''+id+'\','+idx+')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;flex-shrink:0;line-height:1" title="Remove">×</button>'+
           '</div>'+
@@ -4760,6 +4886,9 @@ function tmsViewLoad(id,tab){
     '<button class="tms-btn primary" onclick="tmsSaveLoadInline(\''+id+'\')" style="margin-top:4px">💾 Save Changes</button>';
   }
   document.getElementById('tms-body').innerHTML=hdr+tabBar+content;
+  if(activeTab==='shipment'&&l.stops&&l.stops.length){
+    setTimeout(function(){l.stops.forEach(function(_s,_i){tmsBindStopName(id,_i);});},0);
+  }
 }
 
 /* ─── Read current stop fields from DOM into l.stops ─── */
@@ -4772,8 +4901,9 @@ function _readCurrentStopFields(l){
   if(!l||!l.stops)return;
   l.stops.forEach(function(s,idx){
     var g=function(k){var el=document.getElementById('vl-s'+idx+'-'+k);return el?el.value:null;};
-    var n=g('name');if(n!==null)s.name=n;
-    var a=g('addr');if(a!==null)s.address=a;
+    /* Name/address belong to the bound location record (never free text on the card) */
+    if(s.locId){var rec=tmsGetLocation(s.locId);if(rec){s.name=rec.name;s.address=rec.address;}}
+    else{var n=g('name');if(n!==null)s.name=n;var a=g('addr');if(a!==null)s.address=a;}
     var dt=g('date');if(dt!==null)s.date=dt;
     s.appointment=g('appt')||s.appointment||'';
     s.refNo=g('ref')||s.refNo||'';
