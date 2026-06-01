@@ -1205,10 +1205,59 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
 </div>
 
 <script>
-/* ── FIREBASE SYNC ─────────────────────────────────────────────────────────
-   Fill in your Firebase config here (same project as the mobile app).
-   Leave "PASTE_YOUR_API_KEY" as-is to disable sync (app still works offline).
+/* ── PERSISTENCE: Vercel Blob (always-on) + optional Firebase ──────────────
+   Vercel Blob is the primary store — no config required, works automatically.
+   Firebase is optional; fill in config below to enable real-time multi-device sync.
    ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Blob save (debounced 1 s so rapid edits coalesce into one write) ── */
+var _blobSaveTimer=null;
+function _blobSaveTMS(){
+  clearTimeout(_blobSaveTimer);
+  _blobSaveTimer=setTimeout(function(){
+    var D=window.TMS_DATA||{};
+    fetch('/api/blob-store?key=tms',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
+    }).then(function(r){if(!r.ok)console.warn('[packfast] blob save HTTP',r.status);})
+      .catch(function(e){console.warn('[packfast] blob save:',e.message);});
+  },1000);
+}
+
+/* ── Blob load: called on startup, restores saved state then refreshes UI ── */
+function _blobLoadTMS(){
+  fetch('/api/blob-store?key=tms').then(function(r){return r.json();}).then(function(resp){
+    var d=resp.data;
+    if(!d||!window.TMS_DATA)return;
+    var D=window.TMS_DATA;
+    if(d.loads&&d.loads.length>=D.loads.length)D.loads=d.loads;
+    if(d.trips&&d.trips.length>=(D.trips||[]).length)D.trips=d.trips;
+    if(d.equipment&&d.equipment.length>=(D.equipment||[]).length)D.equipment=d.equipment;
+    if(d.drivers&&d.drivers.length>0)D.drivers=d.drivers;
+    if(typeof d.driverPayRate==='number')D.driverPayRate=d.driverPayRate;
+    if(d.finances&&(d.finances.expenses!==undefined||d.finances.invoices))D.finances=Object.assign(D.finances||{},d.finances);
+    if(d.partsRequests)D.partsRequests=d.partsRequests;
+    if(d.clientInvoices)D.clientInvoices=d.clientInvoices;
+    if(d.carriers)D.carriers=d.carriers;
+    if(d.ownerOperators)D.ownerOperators=d.ownerOperators;
+    if(d.driverWeekPaid)D.driverWeekPaid=d.driverWeekPaid;
+    if(d.ownerOpWeekPaid)D.ownerOpWeekPaid=d.ownerOpWeekPaid;
+    if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
+    if(d.savedLocations)D.savedLocations=d.savedLocations;
+    if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
+    if(d.customers&&d.customers.length>0)D.customers=d.customers;
+    console.log('[packfast] restored from blob:',d.loads?d.loads.length:0,'loads');
+    /* Re-render the active view so restored data appears immediately */
+    try{
+      if(typeof _tmsDispatch==='function'&&typeof _tmsActiveGroup!=='undefined'){
+        var sub=(_tmsActiveSub&&_tmsActiveSub[_tmsActiveGroup])||_tmsActiveGroup||'dashboard';
+        _tmsDispatch(sub);
+      }
+    }catch(e){}
+  }).catch(function(e){console.warn('[packfast] blob load:',e.message);});
+}
+
 var _fbCfg={
   apiKey:"PASTE_YOUR_API_KEY",
   authDomain:"PASTE_YOUR_AUTH_DOMAIN",
@@ -1221,6 +1270,8 @@ var _fbCfg={
 var FB_ENABLED=false;
 var _fbDB=null;
 (function(){
+  /* Always load from blob on startup */
+  _blobLoadTMS();
   try{
     if(_fbCfg.apiKey==='PASTE_YOUR_API_KEY')return;
     var app=firebase.initializeApp(_fbCfg,'packfast-sync');
@@ -1231,6 +1282,7 @@ var _fbDB=null;
   }catch(e){console.warn('[packfast] Firebase init:',e.message);}
 })();
 function _fbPushTMS(){
+  _blobSaveTMS(); /* always persist to Vercel Blob */
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
   _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
