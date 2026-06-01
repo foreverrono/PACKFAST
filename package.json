@@ -2,6 +2,9 @@
   "name": "packfast",
   "version": "1.0.0",
   "dependencies": {
-    "@vercel/blob": "^0.27.0"
+    "@vercel/blob": "^2.3.0"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }
