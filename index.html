@@ -4559,6 +4559,11 @@ function tmsViewLoad(id,tab){
     if(l.origin||l.pickupName)l.stops.push({type:'P',name:l.pickupName||'',address:l.origin||'',date:l.pickupDate||'',appointment:'',refNo:'',contact:'',phone:l.pickupPhone||'',package:'',weight:l.weight||'',temp:'',unitType:'',note:''});
     if(l.dest||l.delivName)l.stops.push({type:'D',name:l.delivName||'',address:l.dest||'',date:l.deliveryDate||'',appointment:'',refNo:'',contact:'',phone:l.delivPhone||'',package:'',weight:'',temp:'',unitType:'',note:l.notes||''});
   }
+  /* Restore saved trip order, then normalize to a 1..N sequence in array order */
+  if(l.stops&&l.stops.length&&l.stops.every(function(s){return typeof s.sequence==='number';})){
+    l.stops.sort(function(a,b){return a.sequence-b.sequence;});
+  }
+  _renumberStops(l);
   var activeTab=tab||window._loadViewTab||'shipment';
   window._loadViewTab=activeTab;window._loadViewId=id;
   var allStatuses=Object.keys(TMS_STATUS_LABELS);
@@ -4601,9 +4606,20 @@ function tmsViewLoad(id,tab){
       l.stops.forEach(function(s,idx){
         var isP=s.type==='P';
         var cc=isP?'#4caf50':'#f44336';var lbl=isP?'P':'D';
+        var seq=s.sequence||(idx+1);var lastIdx=l.stops.length-1;
+        var arrowSt='background:var(--surface);border:0.5px solid var(--border);border-radius:6px;color:var(--text3);font-size:10px;width:22px;height:19px;line-height:1;cursor:pointer;padding:0';
         content+='<div style="background:var(--surface2);border:0.5px solid var(--border);border-radius:12px;overflow:hidden">'+
           '<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-bottom:0.5px solid var(--border)">'+
-          '<div style="width:26px;height:26px;border-radius:50%;background:'+cc+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:3px">'+lbl+'</div>'+
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;margin-top:1px">'+
+            '<div style="display:flex;align-items:center;gap:5px">'+
+              '<span style="font-size:13px;font-weight:700;color:var(--text2);min-width:12px;text-align:right">'+seq+'</span>'+
+              '<div style="width:26px;height:26px;border-radius:50%;background:'+cc+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+lbl+'</div>'+
+            '</div>'+
+            '<div style="display:flex;gap:3px">'+
+              '<button onclick="tmsMoveStop(\''+id+'\','+idx+',-1)"'+(idx===0?' disabled':'')+' title="Move up" style="'+arrowSt+(idx===0?';opacity:0.3;cursor:not-allowed':'')+'">▲</button>'+
+              '<button onclick="tmsMoveStop(\''+id+'\','+idx+',1)"'+(idx===lastIdx?' disabled':'')+' title="Move down" style="'+arrowSt+(idx===lastIdx?';opacity:0.3;cursor:not-allowed':'')+'">▼</button>'+
+            '</div>'+
+          '</div>'+
           '<div style="flex:1;display:flex;flex-direction:column;gap:5px">'+
           '<input class="tms-input" id="vl-s'+idx+'-name" value="'+(s.name||'')+'" placeholder="Company / Location Name" style="font-size:13px;font-weight:500">'+
           '<input class="tms-input" id="vl-s'+idx+'-addr" value="'+(s.address||'')+'" placeholder="Full Address" style="font-size:11px">'+
@@ -4732,6 +4748,11 @@ function tmsViewLoad(id,tab){
 }
 
 /* ─── Read current stop fields from DOM into l.stops ─── */
+/* Normalize stop ordering to a single 1..N sequence in array order */
+function _renumberStops(l){
+  if(!l||!l.stops)return;
+  l.stops.forEach(function(s,i){s.sequence=i+1;});
+}
 function _readCurrentStopFields(l){
   if(!l||!l.stops)return;
   l.stops.forEach(function(s,idx){
@@ -4770,7 +4791,8 @@ function tmsAddStop(loadId,type){
   if(!l)return;
   if(!l.stops)l.stops=[];
   _readCurrentStopFields(l);
-  l.stops.push({type:type,name:'',address:'',date:'',appointment:'',refNo:'',contact:'',phone:'',package:'',weight:'',temp:'',unitType:'',note:''});
+  l.stops.push({type:type,name:'',address:'',date:'',appointment:'',refNo:'',contact:'',phone:'',package:'',weight:'',temp:'',unitType:'',note:'',sequence:l.stops.length+1});
+  _renumberStops(l);
   tmsViewLoad(loadId,'shipment');
 }
 
@@ -4780,6 +4802,21 @@ function tmsRemoveStop(loadId,idx){
   if(!l||!l.stops)return;
   _readCurrentStopFields(l);
   l.stops.splice(idx,1);
+  _renumberStops(l);
+  tmsViewLoad(loadId,'shipment');
+}
+
+/* Reorder a stop up (-1) or down (+1); preserves in-progress field edits, then renumbers */
+function tmsMoveStop(loadId,idx,dir){
+  var D=window.TMS_DATA;
+  var l=D.loads.find(function(x){return x.id===loadId;});
+  if(!l||!l.stops)return;
+  var j=idx+dir;
+  if(j<0||j>=l.stops.length)return;
+  _readCurrentStopFields(l);
+  var t=l.stops[idx];l.stops[idx]=l.stops[j];l.stops[j]=t;
+  _renumberStops(l);
+  if(typeof sfxNav==='function')sfxNav();
   tmsViewLoad(loadId,'shipment');
 }
 
@@ -4799,6 +4836,7 @@ function tmsSaveLoadInline(id){
     l.dimensions=v('vl-dims');
     l.temperature=v('vl-temp');
     _readCurrentStopFields(l);
+    _renumberStops(l);
     var firstP=l.stops&&l.stops.find(function(s){return s.type==='P';});
     var lastD=l.stops&&l.stops.slice().reverse().find(function(s){return s.type==='D';});
     if(firstP){l.origin=firstP.address;l.pickupName=firstP.name;l.pickupDate=firstP.date;}
