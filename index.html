@@ -4579,6 +4579,23 @@ function tmsParseEdi(){
   }catch(e){sfxError();toast('EDI parse error: '+(e.message||'Check format'));}
 }
 
+/* ── Per-load currency label toggle (CAD/USD) — relabels only, never converts ── */
+function _curBtnStyle(active){
+  return 'padding:5px 14px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;border:0.5px solid '+(active?'rgba(224,123,32,0.6)':'var(--border)')+';background:'+(active?'rgba(224,123,32,0.2)':'transparent')+';color:'+(active?'var(--accent)':'var(--text3)')+';transition:all .15s';
+}
+function tmsSetLoadCurrency(loadId,c){
+  var l=window.TMS_DATA.loads.find(function(x){return x.id===loadId;});
+  if(!l)return;
+  l.currency=(c==='USD')?'USD':'CAD';
+  var sym=l.currency==='USD'?'US$':'CA$';
+  document.querySelectorAll('#tms-body .cur-sym').forEach(function(el){el.textContent=sym;});
+  var bc=document.getElementById('cur-btn-CAD'),bu=document.getElementById('cur-btn-USD');
+  if(bc)bc.setAttribute('style',_curBtnStyle(l.currency==='CAD'));
+  if(bu)bu.setAttribute('style',_curBtnStyle(l.currency==='USD'));
+  if(typeof sfxNav==='function')sfxNav();
+  if(typeof _fbPushTMS==='function')_fbPushTMS();
+}
+
 /* ── STOP-CARD LOCATION SELECTOR ────────────────────────────────────────
    The name field is a type-to-search picker over the directory; the address
    is read-only and always belongs to the selected location record (by id). */
@@ -4809,20 +4826,29 @@ function tmsViewLoad(id,tab){
   /* ════ REVENUE TAB ════ */
   else if(activeTab==='revenue'){
     var expDef=JSON.parse(localStorage.getItem('TMS_EXPENSE_DEFAULTS')||'{}');
-    content+='<div class="tms-form-grid" style="max-width:520px;margin-bottom:16px">'+
-      '<div><label class="tms-label">Revenue ($)</label><input class="tms-input" id="vl-revenue" type="number" value="'+(l.revenue||0)+'" oninput="tmsCalcNI(this.value)"></div>'+
-      '<div><label class="tms-label">Declared Value ($)</label><input class="tms-input" id="vl-value2" type="number" value="'+(l.declaredValue||'')+'"></div>'+
-      (l.assignedCarrierId?'<div><label class="tms-label">Carrier Cost ($)</label><input class="tms-input" id="vl-carrier-cost" type="number" value="'+(l.carrierCost||0)+'"></div>':'')+
+    var curCode=(l.currency==='USD')?'USD':'CAD';
+    var cur=curCode==='USD'?'US$':'CA$';
+    content+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'+
+      '<span style="font-size:10px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase">Currency</span>'+
+      '<div style="display:flex;gap:4px;background:var(--surface2);border:0.5px solid var(--border);border-radius:9px;padding:3px">'+
+        '<button type="button" id="cur-btn-CAD" onclick="tmsSetLoadCurrency(\''+id+'\',\'CAD\')" style="'+_curBtnStyle(curCode==='CAD')+'">CAD</button>'+
+        '<button type="button" id="cur-btn-USD" onclick="tmsSetLoadCurrency(\''+id+'\',\'USD\')" style="'+_curBtnStyle(curCode==='USD')+'">USD</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="tms-form-grid" style="max-width:520px;margin-bottom:16px">'+
+      '<div><label class="tms-label">Revenue (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="vl-revenue" type="number" value="'+(l.revenue||0)+'" oninput="tmsCalcNI(this.value)"></div>'+
+      '<div><label class="tms-label">Declared Value (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="vl-value2" type="number" value="'+(l.declaredValue||'')+'"></div>'+
+      (l.assignedCarrierId?'<div><label class="tms-label">Carrier Cost (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="vl-carrier-cost" type="number" value="'+(l.carrierCost||0)+'"></div>':'')+
     '</div>'+
     '<div style="background:rgba(245,166,35,0.04);border:0.5px solid rgba(245,166,35,0.18);border-radius:12px;padding:18px;margin-bottom:16px">'+
     '<div style="font-size:10px;letter-spacing:0.14em;color:var(--accent2);text-transform:uppercase;margin-bottom:14px">Net Income Predictor</div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px">'+
-    '<div><label class="tms-label">Driver Pay ($)</label><input class="tms-input" id="exp-drv" type="number" min="0" value="'+(expDef.driverPay||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
-    '<div><label class="tms-label">Fuel ($)</label><input class="tms-input" id="exp-gas" type="number" min="0" value="'+(expDef.gas||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
-    '<div><label class="tms-label">Truck Rent ($)</label><input class="tms-input" id="exp-truck" type="number" min="0" value="'+(expDef.truckRent||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
-    '<div><label class="tms-label">Office/Rent ($)</label><input class="tms-input" id="exp-rent" type="number" min="0" value="'+(expDef.rent||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
-    '<div><label class="tms-label">Tolls ($)</label><input class="tms-input" id="exp-tolls" type="number" min="0" value="'+(expDef.tolls||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
-    '<div><label class="tms-label">Other ($)</label><input class="tms-input" id="exp-other" type="number" min="0" value="'+(expDef.other||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Driver Pay (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="exp-drv" type="number" min="0" value="'+(expDef.driverPay||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Fuel (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="exp-gas" type="number" min="0" value="'+(expDef.gas||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Truck Rent (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="exp-truck" type="number" min="0" value="'+(expDef.truckRent||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Office/Rent (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="exp-rent" type="number" min="0" value="'+(expDef.rent||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Tolls (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="exp-tolls" type="number" min="0" value="'+(expDef.tolls||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
+    '<div><label class="tms-label">Other (<span class="cur-sym">'+cur+'</span>)</label><input class="tms-input" id="exp-other" type="number" min="0" value="'+(expDef.other||'')+'" oninput="tmsCalcNI(document.getElementById(\'vl-revenue\').value)" placeholder="0"></div>'+
     '</div>'+
     '<div id="ni-result" style="display:flex;gap:12px;flex-wrap:wrap"><div style="font-size:11px;color:var(--text3)">Enter expenses above to calculate</div></div>'+
     '<div style="margin-top:10px"><button class="tms-btn sm" onclick="tmsSaveExpDefaults()">💾 Save as Defaults</button></div>'+
