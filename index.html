@@ -1220,8 +1220,8 @@ function _blobSaveTMS(){
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
-    }).then(function(r){if(!r.ok)console.warn('[packfast] blob save HTTP',r.status);})
-      .catch(function(e){console.warn('[packfast] blob save:',e.message);});
+    }).then(function(r){if(!r.ok){console.warn('[packfast] blob save HTTP',r.status);try{toast('⚠️ Save failed (HTTP '+r.status+') — data not stored');sfxError();}catch(e){}}})
+      .catch(function(e){console.warn('[packfast] blob save:',e.message);try{toast('⚠️ Save failed — check connection');sfxError();}catch(_){}});
   },1000);
 }
 
