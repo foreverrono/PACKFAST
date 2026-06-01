@@ -22,7 +22,10 @@ module.exports = async function handler(req, res) {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const port = parseInt(process.env.SMTP_PORT || '465', 10);
-  const from = process.env.SMTP_FROM || `PackFast Dispatch <${user || TO_DISPATCH}>`;
+  // Zoho only relays mail whose From matches the authenticated account, so send
+  // from SMTP_USER (display-named) and route replies to dispatch@ via Reply-To.
+  const from = `PackFast Dispatch <${user || TO_DISPATCH}>`;
+  const replyTo = process.env.SMTP_REPLY_TO || process.env.SMTP_FROM || TO_DISPATCH;
 
   let to, subject, html;
 
@@ -89,7 +92,7 @@ module.exports = async function handler(req, res) {
       secure: port === 465, // 465 = SSL, 587 = STARTTLS
       auth: { user, pass },
     });
-    await transporter.sendMail({ from, to, subject, html });
+    await transporter.sendMail({ from, to, replyTo, subject, html });
     return res.json({ ok: true });
   } catch (e) {
     return res.status(502).json({ error: e.message });
