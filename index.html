@@ -1219,7 +1219,7 @@ function _blobSaveTMS(){
     fetch('/api/blob-store?key=tms',{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
+      body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],loadSeq:D.loadSeq||3923,pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
     }).then(function(r){if(!r.ok){console.warn('[packfast] blob save HTTP',r.status);try{toast('⚠️ Save failed (HTTP '+r.status+') — data not stored');sfxError();}catch(e){}}})
       .catch(function(e){console.warn('[packfast] blob save:',e.message);try{toast('⚠️ Save failed — check connection');sfxError();}catch(_){}});
   },1000);
@@ -1246,6 +1246,7 @@ function _blobLoadTMS(){
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
     if(d.locationBook)D.locationBook=d.locationBook;
+    if(typeof d.loadSeq==='number')D.loadSeq=Math.max(D.loadSeq||3923,d.loadSeq);
     if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
     if(d.customers&&d.customers.length>0)D.customers=d.customers;
     console.log('[packfast] restored from blob:',d.loads?d.loads.length:0,'loads');
@@ -1286,7 +1287,7 @@ function _fbPushTMS(){
   _blobSaveTMS(); /* always persist to Vercel Blob */
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
-  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
+  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],loadSeq:D.loadSeq||3923,pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
 }
 function _fbPushUsers(){
   if(!FB_ENABLED||!_fbDB)return;
@@ -1324,6 +1325,7 @@ function _fbListenTMS(){
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
     if(d.locationBook)D.locationBook=d.locationBook;
+    if(typeof d.loadSeq==='number')D.loadSeq=Math.max(D.loadSeq||3923,d.loadSeq);
     if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
     /* Customers: restore manually-added clients; mergeFMData will append FM customers without duplicating */
     if(d.customers&&d.customers.length>0)D.customers=d.customers;
@@ -4015,6 +4017,20 @@ function tmsDashPanel(id,src){
   panel.addEventListener('click',function(e){if(e.target===panel){panel.classList.remove('open');setTimeout(function(){panel.remove();},260);}});
 }
 var _tmsShowHistory=false;
+/* Next load ID: a persisted, monotonic counter starting at TOI-M3924.
+   Ignores the ~2,895 historical loads (migrated to TOI-M IDs up to ~3895) by
+   starting above them, and skips any number already in use so it can never
+   collide with an existing load (e.g. earlier count-based ones in the 6000s). */
+function _nextLoadId(){
+  var D=window.TMS_DATA;
+  var used={};
+  (D.loads||[]).forEach(function(l){var m=/^TOI-M(\d+)$/.exec(l.id||'');if(m)used[parseInt(m[1],10)]=1;});
+  var seq=(typeof D.loadSeq==='number'&&D.loadSeq>=3923)?D.loadSeq:3923;
+  do{seq++;}while(used[seq]);
+  D.loadSeq=seq;
+  return 'TOI-M'+seq;
+}
+
 /* ── SAVED LOCATIONS DIRECTORY (Pickup/Delivery blocks) ─────────────────── */
 var _LOC_CFG={
   pickup:{nameId:'tl-pickup-name',phoneId:'tl-pickup-phone',addrId:'tl-orig'},
@@ -4403,8 +4419,7 @@ function tmsAddLoad(postToBoard){
   if(!direction){sfxError();toast('Select a shipment direction first');return;}
   if(!orig||!dest){sfxError();toast('Enter origin and destination');return;}
   var D=window.TMS_DATA;
-  var _mCount=D.loads.filter(function(l){return (l.id||'').indexOf('TOI-M')===0;}).length;
-  var newId='TOI-M'+(3923+_mCount+1);
+  var newId=_nextLoadId();
   var ref='REF-'+(8800+Math.floor(Math.random()*100));
   var isOutsourced=assignMode==='outsource'&&carrierId;
   var isOOLoad=assignMode==='ownerop'&&ooId;
@@ -8878,6 +8893,7 @@ window.TMS_DATA={
   equipment:[],
   customers:[],
   locationBook:[],
+  loadSeq:3923,
   customs:[],
   warehouse:{bays:[],log:[]},
   permits:[],
