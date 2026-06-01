@@ -3565,11 +3565,14 @@ function tmsDashboard(){
   var sc={'In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
 
   /* ── Use D.loads as single source of truth (FM loads are already merged in) ── */
-  var allLoads=D.loads.map(function(l){return{revenue:parseFloat(l.revenue)||0,date:l.created||l.date||'',driver:l.driver||'—',customer:l.customer||l.client||'—',origin:l.origin||'',dest:l.dest||'',dispatcher:l.loadType||l.type||''};});
+  var allLoads=D.loads.map(function(l){return{revenue:parseFloat(l.revenue)||0,date:l.created||l.date||'',driver:l.driver||'—',customer:l.customer||l.client||'—',origin:l.origin||'',dest:l.dest||'',dispatcher:l.loadType||l.type||'',status:l.status||'',past:l.past,id:l.id||'',currency:l.currency||'CAD'};});
   var monthly={},drvS={},custS={},catS={};
   var totalFMrev=0,cadRev=0,usdRev=0;
+  /* Revenue = delivered/historical loads only (matches Finances module) */
+  var earnedLoads=allLoads.filter(function(l){return l.status==='Delivered'||l.status==='DELIVERED'||l.past||(l.id&&l.id.indexOf('HIS-')===0);});
+  totalFMrev=earnedLoads.reduce(function(s,l){return s+(l.revenue||0);},0);
   allLoads.forEach(function(l){
-    var rev=l.revenue||0; totalFMrev+=rev;
+    var rev=l.revenue||0;
     /* monthly */
     var m=l.date&&l.date.match(/(\d+)\/(\d+)\/(\d{4})/);
     if(m){var yr=m[3],mo=m[1].length<2?'0'+m[1]:m[1],key=yr+'-'+mo;
@@ -3730,7 +3733,7 @@ function tmsDashboard(){
     var el3=document.getElementById('tkpi-3');if(el3)el3.textContent=topDrv;
     var el3b=document.getElementById('tkpi-3b');if(el3b)el3b.textContent=topDrvLoads+' loads';
     countUp(document.getElementById('tkpi-4'),Object.keys(custS).length,'');
-    countUp(document.getElementById('tkpi-5'),Math.round(totalFMrev/(allLoads.length||1)),'$');
+    countUp(document.getElementById('tkpi-5'),Math.round(totalFMrev/(earnedLoads.length||1)),'$');
     var g=document.getElementById('tms-kpi-row');
     if(g){var r=g.getBoundingClientRect();burstAt(r.left+r.width/2,r.top+r.height/2,14,'123,108,255');}
   },100);
