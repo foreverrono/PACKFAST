@@ -1403,10 +1403,17 @@ function tmsGetLocationBook(){
   D.locationBook.forEach(function(e){
     if(e&&e.name&&e.address)map[e.name.toLowerCase()]={name:e.name,address:e.address,phone:e.phone||''};
   });
-  /* Learn from existing loads without clobbering explicit book entries */
+  /* Learn from existing loads without clobbering explicit book entries.
+     Historical/FM loads use stops[]; manual loads use pickupName/delivName. */
   (D.loads||[]).forEach(function(l){
-    if(l.pickupName&&l.origin&&l.origin!=='—'){var k=l.pickupName.toLowerCase();if(!map[k])map[k]={name:l.pickupName,address:l.origin,phone:l.pickupPhone||''};}
-    if(l.delivName&&l.dest&&l.dest!=='—'){var k2=l.delivName.toLowerCase();if(!map[k2])map[k2]={name:l.delivName,address:l.dest,phone:l.delivPhone||''};}
+    if(l.stops&&l.stops.length){
+      l.stops.forEach(function(s){
+        if(s.location&&s.location.trim()&&s.address&&s.address.trim()){var ks=s.location.toLowerCase();if(!map[ks])map[ks]={name:s.location,address:s.address,phone:s.phone||''};}
+      });
+    }else{
+      if(l.pickupName&&l.origin&&l.origin!=='—'){var k=l.pickupName.toLowerCase();if(!map[k])map[k]={name:l.pickupName,address:l.origin,phone:l.pickupPhone||''};}
+      if(l.delivName&&l.dest&&l.dest!=='—'){var k2=l.delivName.toLowerCase();if(!map[k2])map[k2]={name:l.delivName,address:l.dest,phone:l.delivPhone||''};}
+    }
   });
   return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return a.name.toLowerCase()<b.name.toLowerCase()?-1:1;});
 }
@@ -1439,8 +1446,14 @@ function tmsGetDirectory(){
     if(phone&&phone.trim()&&!map[k].phone)map[k].phone=phone.trim();
   }
   (D.loads||[]).forEach(function(l){
-    tally(l.pickupName,l.origin,l.pickupPhone);
-    tally(l.delivName,l.dest,l.delivPhone);
+    /* Historical / FileMaker loads carry a stops[] array ({type,location,address});
+       manual loads carry pickupName/delivName + origin/dest. Use whichever exists. */
+    if(l.stops&&l.stops.length){
+      l.stops.forEach(function(s){tally(s.location,s.address,s.phone);});
+    }else{
+      tally(l.pickupName,l.origin,l.pickupPhone);
+      tally(l.delivName,l.dest,l.delivPhone);
+    }
   });
   /* Include manually-added directory entries even if not yet on any load */
   (D.locationBook||[]).forEach(function(e){
@@ -4056,11 +4069,14 @@ function tmsRenderLocDirectory(side,query){
   var list=document.getElementById('tl-'+side+'-loclist');
   if(!list)return;
   var q=(query||'').toLowerCase().trim();
-  var items=tmsGetDirectory().filter(function(e){
+  var all=tmsGetDirectory().filter(function(e){
     return !q||e.name.toLowerCase().indexOf(q)!==-1||(e.address||'').toLowerCase().indexOf(q)!==-1;
   });
+  if(!all.length){_locDir[side]=[];list.innerHTML='<div style="font-size:11px;color:var(--text3);padding:14px;text-align:center">'+(q?'No matches.':'No saved locations yet — create a load or add one above.')+'</div>';return;}
+  /* Cap rows for performance (thousands of historical locations); search reaches the rest */
+  var CAP=50;
+  var items=all.slice(0,CAP);
   _locDir[side]=items;
-  if(!items.length){list.innerHTML='<div style="font-size:11px;color:var(--text3);padding:14px;text-align:center">'+(q?'No matches.':'No saved locations yet — create a load or add one above.')+'</div>';return;}
   list.innerHTML=items.map(function(e,i){
     var badge=e.count>0?'<span class="tms-badge" style="font-size:8px;white-space:nowrap">'+e.count+' load'+(e.count===1?'':'s')+'</span>':'<span class="tms-badge" style="font-size:8px;opacity:0.55;white-space:nowrap">new</span>';
     var sub=_locEsc(e.address)+(e.phone?' · '+_locEsc(e.phone):'');
@@ -4069,7 +4085,7 @@ function tmsRenderLocDirectory(side,query){
       '<div style="font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div></div>'+
       badge+
     '</div>';
-  }).join('');
+  }).join('')+(all.length>CAP?'<div style="font-size:10px;color:var(--text3);text-align:center;padding:6px">Showing top '+CAP+' of '+all.length+' — type to search</div>':'');
 }
 function tmsLocPick(side,idx){
   var e=(_locDir[side]||[])[idx];if(!e)return;
