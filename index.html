@@ -1419,10 +1419,39 @@ function tmsUpsertLocation(name,address,phone){
   if(!name||!name.trim()||!address||!address.trim()||address==='—')return;
   var D=window.TMS_DATA;
   if(!D.locationBook)D.locationBook=[];
-  var n=name.trim().toLowerCase();
-  var ex=D.locationBook.find(function(e){return e.name.toLowerCase()===n;});
-  if(ex){ex.address=address.trim();if(phone&&phone.trim())ex.phone=phone.trim();}
+  var n=name.trim().toLowerCase(),a=address.trim().toLowerCase();
+  /* Dedupe on name + address so the same name at two addresses is two entries */
+  var ex=D.locationBook.find(function(e){return e.name.toLowerCase()===n&&(e.address||'').toLowerCase()===a;});
+  if(ex){if(phone&&phone.trim())ex.phone=phone.trim();}
   else D.locationBook.push({name:name.trim(),address:address.trim(),phone:(phone||'').trim()});
+}
+/* Directory view: every saved/used location with a live "N loads" usage count
+   (all loads using that name+address, pickup or delivery), most-used first. */
+function tmsGetDirectory(){
+  var D=window.TMS_DATA;
+  var map={};
+  function key(name,addr){return (name||'').trim().toLowerCase()+'|'+(addr||'').trim().toLowerCase();}
+  function tally(name,addr,phone){
+    if(!name||!name.trim()||!addr||!addr.trim()||addr==='—')return;
+    var k=key(name,addr);
+    if(!map[k])map[k]={name:name.trim(),address:addr.trim(),phone:(phone||'').trim(),count:0};
+    map[k].count++;
+    if(phone&&phone.trim()&&!map[k].phone)map[k].phone=phone.trim();
+  }
+  (D.loads||[]).forEach(function(l){
+    tally(l.pickupName,l.origin,l.pickupPhone);
+    tally(l.delivName,l.dest,l.delivPhone);
+  });
+  /* Include manually-added directory entries even if not yet on any load */
+  (D.locationBook||[]).forEach(function(e){
+    if(!e||!e.name||!e.address)return;
+    var k=key(e.name,e.address);
+    if(!map[k])map[k]={name:e.name,address:e.address,phone:e.phone||'',count:0};
+    else if(e.phone&&!map[k].phone)map[k].phone=e.phone;
+  });
+  return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){
+    return b.count-a.count || (a.name.toLowerCase()<b.name.toLowerCase()?-1:1);
+  });
 }
 /* Bind a Name input so picking/typing a known name fills the linked address + phone */
 function tmsBindNameAC(nameId,addrId,phoneId){
@@ -3973,6 +4002,107 @@ function tmsDashPanel(id,src){
   panel.addEventListener('click',function(e){if(e.target===panel){panel.classList.remove('open');setTimeout(function(){panel.remove();},260);}});
 }
 var _tmsShowHistory=false;
+/* ── SAVED LOCATIONS DIRECTORY (Pickup/Delivery blocks) ─────────────────── */
+var _LOC_CFG={
+  pickup:{nameId:'tl-pickup-name',phoneId:'tl-pickup-phone',addrId:'tl-orig'},
+  delivery:{nameId:'tl-delivery-name',phoneId:'tl-delivery-phone',addrId:'tl-dest'}
+};
+var _locDir={pickup:[],delivery:[]};
+function _locEsc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+/* Build one Pickup/Delivery block: header + Manual/Directory toggle + both panels */
+function _tmsLocBlock(side,o){
+  var tabBtn='style="background:transparent;border:none;border-radius:6px;padding:5px 12px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);cursor:pointer;transition:all .15s"';
+  return '<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">'+
+      '<div style="font-size:12px;color:var(--text);font-weight:500">'+o.title+'</div>'+
+      '<div style="display:flex;gap:3px;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:2px">'+
+        '<button type="button" id="tl-'+side+'-tab-manual" onclick="tmsLocToggle(\''+side+'\',\'manual\')" '+tabBtn+'>Manual entry</button>'+
+        '<button type="button" id="tl-'+side+'-tab-directory" onclick="tmsLocToggle(\''+side+'\',\'directory\')" '+tabBtn+'>Directory</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="tl-'+side+'-manual"><div class="tms-form-grid">'+
+      '<div><label class="tms-label">'+o.nameLabel+'</label><input class="tms-input" id="'+o.nameId+'" placeholder="'+o.namePh+'" autocomplete="off"></div>'+
+      '<div><label class="tms-label">'+o.phoneLabel+'</label><input class="tms-input" id="'+o.phoneId+'" placeholder="'+o.phonePh+'"></div>'+
+      o.addrCell+
+    '</div></div>'+
+    '<div id="tl-'+side+'-directory" style="display:none">'+
+      '<input class="tms-input" id="tl-'+side+'-search" placeholder="🔍 Search saved locations…" autocomplete="off" oninput="tmsRenderLocDirectory(\''+side+'\',this.value)" style="margin-bottom:8px">'+
+      '<button type="button" onclick="tmsLocShowAddForm(\''+side+'\')" style="width:100%;border:1px dashed var(--accent);color:var(--accent);background:transparent;border-radius:8px;padding:8px;font-size:11px;cursor:pointer;margin-bottom:8px">+ Add new location</button>'+
+      '<div id="tl-'+side+'-addform" style="display:none;background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px">'+
+        '<div class="tms-form-grid">'+
+          '<div><label class="tms-label">Name</label><input class="tms-input" id="tl-'+side+'-add-name" placeholder="e.g. Walmart DC"></div>'+
+          '<div><label class="tms-label">Phone</label><input class="tms-input" id="tl-'+side+'-add-phone" placeholder="e.g. 514-555-0100"></div>'+
+          '<div class="tms-form-full"><label class="tms-label">Address</label><input class="tms-input" id="tl-'+side+'-add-addr" placeholder="123 King St W, Toronto, ON"></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px;margin-top:8px"><button type="button" class="tms-btn sm primary" onclick="tmsLocAddNew(\''+side+'\')">Save &amp; Fill</button><button type="button" class="tms-btn sm" onclick="tmsLocShowAddForm(\''+side+'\',true)">Cancel</button></div>'+
+      '</div>'+
+      '<div id="tl-'+side+'-loclist"></div>'+
+    '</div>'+
+  '</div>';
+}
+function tmsLocToggle(side,mode){
+  var man=document.getElementById('tl-'+side+'-manual');
+  var dir=document.getElementById('tl-'+side+'-directory');
+  if(!man||!dir)return;
+  var isDir=mode==='directory';
+  man.style.display=isDir?'none':'';
+  dir.style.display=isDir?'':'none';
+  function style(btn,on){if(!btn)return;btn.style.background=on?'rgba(224,123,32,0.18)':'transparent';btn.style.color=on?'var(--accent)':'var(--text3)';}
+  style(document.getElementById('tl-'+side+'-tab-manual'),!isDir);
+  style(document.getElementById('tl-'+side+'-tab-directory'),isDir);
+  if(isDir)tmsRenderLocDirectory(side,(document.getElementById('tl-'+side+'-search')||{}).value||'');
+}
+function tmsRenderLocDirectory(side,query){
+  var list=document.getElementById('tl-'+side+'-loclist');
+  if(!list)return;
+  var q=(query||'').toLowerCase().trim();
+  var items=tmsGetDirectory().filter(function(e){
+    return !q||e.name.toLowerCase().indexOf(q)!==-1||(e.address||'').toLowerCase().indexOf(q)!==-1;
+  });
+  _locDir[side]=items;
+  if(!items.length){list.innerHTML='<div style="font-size:11px;color:var(--text3);padding:14px;text-align:center">'+(q?'No matches.':'No saved locations yet — create a load or add one above.')+'</div>';return;}
+  list.innerHTML=items.map(function(e,i){
+    var badge=e.count>0?'<span class="tms-badge" style="font-size:8px;white-space:nowrap">'+e.count+' load'+(e.count===1?'':'s')+'</span>':'<span class="tms-badge" style="font-size:8px;opacity:0.55;white-space:nowrap">new</span>';
+    var sub=_locEsc(e.address)+(e.phone?' · '+_locEsc(e.phone):'');
+    return '<div onclick="tmsLocPick(\''+side+'\','+i+')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border:0.5px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:background .15s" onmouseenter="this.style.background=\'rgba(224,123,32,0.06)\'" onmouseleave="this.style.background=\'\'">'+
+      '<div style="min-width:0;flex:1"><div style="font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_locEsc(e.name)+'</div>'+
+      '<div style="font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div></div>'+
+      badge+
+    '</div>';
+  }).join('');
+}
+function tmsLocPick(side,idx){
+  var e=(_locDir[side]||[])[idx];if(!e)return;
+  var cfg=_LOC_CFG[side];
+  var nm=document.getElementById(cfg.nameId);if(nm)nm.value=e.name;
+  var ph=document.getElementById(cfg.phoneId);if(ph)ph.value=e.phone||'';
+  var ad=document.getElementById(cfg.addrId);if(ad){ad.value=e.address||'';ad.dispatchEvent(new Event('change'));}
+  tmsLocToggle(side,'manual');
+  if(typeof sfxNav==='function')sfxNav();
+}
+function tmsLocShowAddForm(side,hide){
+  var f=document.getElementById('tl-'+side+'-addform');if(!f)return;
+  if(hide){f.style.display='none';return;}
+  var show=f.style.display==='none';
+  f.style.display=show?'':'none';
+  if(show){var n=document.getElementById('tl-'+side+'-add-name');if(n)n.focus();}
+}
+function tmsLocAddNew(side){
+  var name=((document.getElementById('tl-'+side+'-add-name')||{}).value||'').trim();
+  var addr=((document.getElementById('tl-'+side+'-add-addr')||{}).value||'').trim();
+  var phone=((document.getElementById('tl-'+side+'-add-phone')||{}).value||'').trim();
+  if(!name||!addr){if(typeof sfxError==='function')sfxError();toast('Enter a name and address');return;}
+  tmsUpsertLocation(name,addr,phone);
+  if(typeof _fbPushTMS==='function')_fbPushTMS();
+  var cfg=_LOC_CFG[side];
+  var nm=document.getElementById(cfg.nameId);if(nm)nm.value=name;
+  var ph=document.getElementById(cfg.phoneId);if(ph)ph.value=phone;
+  var ad=document.getElementById(cfg.addrId);if(ad){ad.value=addr;ad.dispatchEvent(new Event('change'));}
+  ['name','addr','phone'].forEach(function(k){var el=document.getElementById('tl-'+side+'-add-'+k);if(el)el.value='';});
+  tmsLocShowAddForm(side,true);
+  tmsLocToggle(side,'manual');
+  if(typeof sfxSuccess==='function')sfxSuccess();toast('Location saved · '+name);
+}
 function tmsLoadEntry(){
   var D=window.TMS_DATA;
   var driverOpts=D.drivers.map(function(d){return '<option value="'+d.name+'">'+d.name+'</option>';}).join('');
@@ -3995,16 +4125,10 @@ function tmsLoadEntry(){
   '</div>'+
   '<div id="tl-type-gate" style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.15);border-radius:8px;padding:12px;font-size:11px;color:var(--text3);margin-bottom:10px;max-width:700px">Select a Type and Direction above to continue.</div>'+
   '<div id="tl-details-section" style="display:none;max-width:700px">'+
+  _tmsLocBlock('pickup',{title:'📦 Pickup',nameLabel:'Pickup Name',phoneLabel:'Pickup Phone',namePh:'e.g. Walmart DC — autofills address',phonePh:'e.g. 514-555-0100',nameId:'tl-pickup-name',phoneId:'tl-pickup-phone',addrCell:'<div class="tms-form-full"><label class="tms-label">Pickup Address</label><input class="tms-input" id="tl-orig" placeholder="e.g. 123 King St W, Toronto, ON" onchange="tmsAutoRoute()"></div>'})+
+  _tmsLocBlock('delivery',{title:'🏁 Delivery',nameLabel:'Delivery Name',phoneLabel:'Delivery Phone',namePh:'e.g. Home Depot — autofills address',phonePh:'e.g. 312-555-0200',nameId:'tl-delivery-name',phoneId:'tl-delivery-phone',addrCell:'<div class="tms-form-full"><label class="tms-label">Delivery Address</label><div style="display:flex;gap:6px"><input class="tms-input" id="tl-dest" placeholder="e.g. 456 Michigan Ave, Chicago, IL" onchange="tmsAutoRoute()" style="flex:1"><select class="tms-select" id="tl-terminal-dest" onchange="tmsSelectTerminalDest(this)" style="flex:0 0 auto;max-width:160px"><option value="">Or Terminal ↓</option></select></div></div>'})+
+  '<div id="tl-route-info" style="display:none;background:rgba(245,166,35,0.06);border:0.5px solid rgba(245,166,35,0.2);border-radius:8px;padding:10px;font-size:11px;color:var(--text2);margin-bottom:10px"></div>'+
   '<div class="tms-form-grid">'+
-  '<div><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC — autofills address" autocomplete="off"></div>'+
-  '<div><label class="tms-label">Pickup Phone</label><input class="tms-input" id="tl-pickup-phone" placeholder="e.g. 514-555-0100"></div>'+
-  '<div class="tms-form-full"><label class="tms-label">Pickup Address</label><input class="tms-input" id="tl-orig" placeholder="e.g. 123 King St W, Toronto, ON" onchange="tmsAutoRoute()"></div>'+
-  '<div><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot — autofills address" autocomplete="off"></div>'+
-  '<div><label class="tms-label">Delivery Phone</label><input class="tms-input" id="tl-delivery-phone" placeholder="e.g. 312-555-0200"></div>'+
-  '<div class="tms-form-full"><label class="tms-label">Delivery Address</label>'+
-  '<div style="display:flex;gap:6px"><input class="tms-input" id="tl-dest" placeholder="e.g. 456 Michigan Ave, Chicago, IL" onchange="tmsAutoRoute()" style="flex:1"><select class="tms-select" id="tl-terminal-dest" onchange="tmsSelectTerminalDest(this)" style="flex:0 0 auto;max-width:160px"><option value="">Or Terminal ↓</option></select></div>'+
-  '</div>'+
-  '<div id="tl-route-info" style="grid-column:1/-1;display:none;background:rgba(245,166,35,0.06);border:0.5px solid rgba(245,166,35,0.2);border-radius:8px;padding:10px;font-size:11px;color:var(--text2)"></div>'+
   '<div><label class="tms-label">Trailer Type</label><select class="tms-select" id="tl-trailer"><option>Dry Van 53\'</option><option>Reefer 53\'</option><option>Flatbed 53\'</option><option>Step Deck</option><option>Container 40\'</option><option>Container 20\'</option></select></div>'+
   '<div class="tms-form-full"><label class="tms-label">Assignment</label>'+
   '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
@@ -4047,6 +4171,9 @@ function tmsLoadEntry(){
     tmsBindNameAC('tl-delivery-name','tl-dest','tl-delivery-phone');
     /* Typeable, alphabetical client field */
     var c=document.getElementById('tl-cust');if(c)tmsBindAC(c,tmsGetCustomerNames);
+    /* Default both location blocks to Manual entry (styles the toggle) */
+    tmsLocToggle('pickup','manual');
+    tmsLocToggle('delivery','manual');
   },0);
 }
 
