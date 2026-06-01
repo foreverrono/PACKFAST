@@ -1233,7 +1233,7 @@ var _fbDB=null;
 function _fbPushTMS(){
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
-  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{}}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
+  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
 }
 function _fbPushUsers(){
   if(!FB_ENABLED||!_fbDB)return;
@@ -1247,10 +1247,21 @@ function _fbListenTMS(){
     var d=snap.val();
     if(!d||!window.TMS_DATA)return;
     var D=window.TMS_DATA;
-    /* Merge: accept remote loads array if it's at least as long (avoids overwriting new local adds) */
+    /* Loads: accept remote array if it has more entries (fresh page load starts at 0) */
     if(d.loads&&d.loads.length>=D.loads.length){D.loads=d.loads;}
-    if(d.trips&&d.trips.length>=( D.trips||[]).length){D.trips=d.trips;}
-    if(d.drivers){d.drivers.forEach(function(fd){var loc=D.drivers.find(function(x){return x.id===fd.id;});if(loc){loc.payLog=fd.payLog||loc.payLog;loc.stats=fd.stats||loc.stats;loc.status=fd.status||loc.status;}});}
+    if(d.trips&&d.trips.length>=(D.trips||[]).length){D.trips=d.trips;}
+    /* Equipment: full replace — source of truth is Firebase */
+    if(d.equipment&&d.equipment.length>=(D.equipment||[]).length){D.equipment=d.equipment;}
+    /* Drivers: full replace so new drivers added elsewhere appear, preserve local payLog if richer */
+    if(d.drivers&&d.drivers.length>0){
+      D.drivers=d.drivers;
+    }
+    /* Scalar fields */
+    if(typeof d.driverPayRate==='number')D.driverPayRate=d.driverPayRate;
+    /* Finances: restore full object; avoid overwriting with empty stub */
+    if(d.finances&&(d.finances.expenses!==undefined||d.finances.invoices)){
+      D.finances=Object.assign(D.finances||{},d.finances);
+    }
     if(d.partsRequests)D.partsRequests=d.partsRequests;
     if(d.clientInvoices)D.clientInvoices=d.clientInvoices;
     if(d.carriers)D.carriers=d.carriers;
@@ -1260,6 +1271,8 @@ function _fbListenTMS(){
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
     if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
+    /* Customers: restore manually-added clients; mergeFMData will append FM customers without duplicating */
+    if(d.customers&&d.customers.length>0)D.customers=d.customers;
   });
 }
 
@@ -6087,7 +6100,7 @@ function tmsAddTruck(){
   var id='TRK-'+unit;
   if(D.equipment.find(function(e){return e.id===id;})){sfxError();toast('Unit '+unit+' already exists');return;}
   D.equipment.push({id:id,unit:unit,make:make,model:model,year:year,plate:plate,vin:vin,owner:owner,status:status,category:'Truck',type:'Semi'});
-  sfxSuccess();toast('Truck added · Unit '+unit);tmsTrucks();
+  _fbPushTMS();sfxSuccess();toast('Truck added · Unit '+unit);tmsTrucks();
 }
 function tmsAddTrailer(){
   var D=window.TMS_DATA;
@@ -6103,7 +6116,7 @@ function tmsAddTrailer(){
   var idx=(D.equipment||[]).filter(function(e){return e.category==='Trailer';}).length+1;
   var id='TRI-NEW-'+idx;
   D.equipment.push({id:id,unit:unit,type:type,make:make,year:year,plate:plate,plate_expiry:expiry,vin:vin,owner:owner,status:'Active',category:'Trailer'});
-  sfxSuccess();toast('Trailer added · '+unit);tmsTrailers();
+  _fbPushTMS();sfxSuccess();toast('Trailer added · '+unit);tmsTrailers();
 }
 function tmsAddEquip(){tmsAddTruck();}
 function tmsAddDriver(){
@@ -6118,12 +6131,12 @@ function tmsAddDriver(){
   if(!pin||pin.length<3){sfxError();toast('Set a portal passkey');return;}
   var id='DRV-'+(D.drivers.length+1).toString().padStart(2,'0');
   D.drivers.push({id:id,name:name,lic:lic,phone:phone,email:email,pin:pin,status:status,load:null,loggedIn:false,stats:{completed:0,pending:0,earnings:0},payLog:[]});
-  sfxSuccess();toast('Driver added · '+name);tmsDrivers();
+  _fbPushTMS();sfxSuccess();toast('Driver added · '+name);tmsDrivers();
 }
-function tmsRemoveTruck(id){var D=window.TMS_DATA;D.equipment=D.equipment.filter(function(e){return e.id!==id;});sfxPop();tmsTrucks();}
-function tmsRemoveTrailer(id){var D=window.TMS_DATA;D.equipment=D.equipment.filter(function(e){return e.id!==id;});sfxPop();tmsTrailers();}
+function tmsRemoveTruck(id){var D=window.TMS_DATA;D.equipment=D.equipment.filter(function(e){return e.id!==id;});_fbPushTMS();sfxPop();tmsTrucks();}
+function tmsRemoveTrailer(id){var D=window.TMS_DATA;D.equipment=D.equipment.filter(function(e){return e.id!==id;});_fbPushTMS();sfxPop();tmsTrailers();}
 function tmsRemoveEquip(id){tmsRemoveTruck(id);}
-function tmsRemoveDriver(id){var D=window.TMS_DATA;D.drivers=D.drivers.filter(function(d){return d.id!==id;});sfxPop();tmsDrivers();}
+function tmsRemoveDriver(id){var D=window.TMS_DATA;D.drivers=D.drivers.filter(function(d){return d.id!==id;});_fbPushTMS();sfxPop();tmsDrivers();}
 
 function tmsCustomers(){
   var D=window.TMS_DATA;
@@ -6174,11 +6187,11 @@ function tmsAddCustomer(){
   if(!name||!company){sfxError();toast('Enter contact name and company');return;}
   var id='CUST-'+(D.customers.length+1).toString().padStart(3,'0');
   D.customers.push({id:id,name:name,company:company,email:email,phone:phone,billingAddr:billingAddr,payTerms:payTerms,mcNum:mcNum,dotNum:dotNum,notes:notes});
-  sfxSuccess();toast('Client added · '+company);tmsCustomers();
+  _fbPushTMS();sfxSuccess();toast('Client added · '+company);tmsCustomers();
 }
 function tmsRemoveCustomer(id){
   window.TMS_DATA.customers=(window.TMS_DATA.customers||[]).filter(function(c){return c.id!==id;});
-  sfxPop();tmsCustomers();
+  _fbPushTMS();sfxPop();tmsCustomers();
 }
 function tmsDispatchCenter(){
   var D=window.TMS_DATA;
