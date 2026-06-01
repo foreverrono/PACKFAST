@@ -1219,7 +1219,7 @@ function _blobSaveTMS(){
     fetch('/api/blob-store?key=tms',{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
+      body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
     }).then(function(r){if(!r.ok){console.warn('[packfast] blob save HTTP',r.status);try{toast('⚠️ Save failed (HTTP '+r.status+') — data not stored');sfxError();}catch(e){}}})
       .catch(function(e){console.warn('[packfast] blob save:',e.message);try{toast('⚠️ Save failed — check connection');sfxError();}catch(_){}});
   },1000);
@@ -1245,6 +1245,7 @@ function _blobLoadTMS(){
     if(d.ownerOpWeekPaid)D.ownerOpWeekPaid=d.ownerOpWeekPaid;
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
+    if(d.locationBook)D.locationBook=d.locationBook;
     if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
     if(d.customers&&d.customers.length>0)D.customers=d.customers;
     console.log('[packfast] restored from blob:',d.loads?d.loads.length:0,'loads');
@@ -1285,7 +1286,7 @@ function _fbPushTMS(){
   _blobSaveTMS(); /* always persist to Vercel Blob */
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
-  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
+  _fbDB.ref('tms').set({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]}).catch(function(e){console.warn('[packfast] FB write:',e.message);});
 }
 function _fbPushUsers(){
   if(!FB_ENABLED||!_fbDB)return;
@@ -1322,6 +1323,7 @@ function _fbListenTMS(){
     if(d.ownerOpWeekPaid)D.ownerOpWeekPaid=d.ownerOpWeekPaid;
     if(d.payRates)D.payRates=Object.assign(D.payRates||{},d.payRates);
     if(d.savedLocations)D.savedLocations=d.savedLocations;
+    if(d.locationBook)D.locationBook=d.locationBook;
     if(d.pendingInvoiceLoads)D.pendingInvoiceLoads=d.pendingInvoiceLoads;
     /* Customers: restore manually-added clients; mergeFMData will append FM customers without duplicating */
     if(d.customers&&d.customers.length>0)D.customers=d.customers;
@@ -1349,7 +1351,8 @@ function tmsSaveLocation(addr){
   if(!D.savedLocations)D.savedLocations=[];
   if(D.savedLocations.indexOf(addr)===-1){D.savedLocations.push(addr);_fbPushTMS();}
 }
-function tmsBindAC(inputEl){
+function tmsBindAC(inputEl,sourceFn){
+  var _src=sourceFn||tmsGetSavedLocations;
   if(!inputEl||inputEl.dataset.acBound)return;
   inputEl.dataset.acBound='1';
   var wrap=document.createElement('div');wrap.className='ac-wrap';
@@ -1377,7 +1380,7 @@ function tmsBindAC(inputEl){
   inputEl.addEventListener('input',function(){
     var q=this.value.toLowerCase().trim();
     if(!q||q.length<1){drop.classList.remove('show');return;}
-    showDrop(tmsGetSavedLocations().filter(function(a){return a.toLowerCase().indexOf(q)!==-1;}));
+    showDrop(_src().filter(function(a){return a.toLowerCase().indexOf(q)!==-1;}));
   });
   inputEl.addEventListener('keydown',function(e){
     var items=drop.querySelectorAll('.ac-item');
@@ -1388,6 +1391,91 @@ function tmsBindAC(inputEl){
     else if(e.key==='Escape'){drop.classList.remove('show');}
   });
   inputEl.addEventListener('blur',function(){setTimeout(function(){drop.classList.remove('show');},180);});
+}
+
+/* ── LOCATION DIRECTORY: pickup/delivery name → address (+phone) ──────────
+   Builds a name→address book from saved entries plus any existing loads, so
+   typing a known name auto-fills its address. New names are learned on save. */
+function tmsGetLocationBook(){
+  var D=window.TMS_DATA;
+  if(!D.locationBook)D.locationBook=[];
+  var map={};
+  D.locationBook.forEach(function(e){
+    if(e&&e.name&&e.address)map[e.name.toLowerCase()]={name:e.name,address:e.address,phone:e.phone||''};
+  });
+  /* Learn from existing loads without clobbering explicit book entries */
+  (D.loads||[]).forEach(function(l){
+    if(l.pickupName&&l.origin&&l.origin!=='—'){var k=l.pickupName.toLowerCase();if(!map[k])map[k]={name:l.pickupName,address:l.origin,phone:l.pickupPhone||''};}
+    if(l.delivName&&l.dest&&l.dest!=='—'){var k2=l.delivName.toLowerCase();if(!map[k2])map[k2]={name:l.delivName,address:l.dest,phone:l.delivPhone||''};}
+  });
+  return Object.keys(map).map(function(k){return map[k];}).sort(function(a,b){return a.name.toLowerCase()<b.name.toLowerCase()?-1:1;});
+}
+function tmsLookupLocation(name){
+  if(!name)return null;
+  var n=name.toLowerCase().trim();
+  return tmsGetLocationBook().find(function(e){return e.name.toLowerCase()===n;})||null;
+}
+function tmsUpsertLocation(name,address,phone){
+  if(!name||!name.trim()||!address||!address.trim()||address==='—')return;
+  var D=window.TMS_DATA;
+  if(!D.locationBook)D.locationBook=[];
+  var n=name.trim().toLowerCase();
+  var ex=D.locationBook.find(function(e){return e.name.toLowerCase()===n;});
+  if(ex){ex.address=address.trim();if(phone&&phone.trim())ex.phone=phone.trim();}
+  else D.locationBook.push({name:name.trim(),address:address.trim(),phone:(phone||'').trim()});
+}
+/* Bind a Name input so picking/typing a known name fills the linked address + phone */
+function tmsBindNameAC(nameId,addrId,phoneId){
+  var nameEl=document.getElementById(nameId);
+  if(!nameEl||nameEl.dataset.nameacBound)return;
+  nameEl.dataset.nameacBound='1';
+  var wrap=document.createElement('div');wrap.className='ac-wrap';
+  var parent=nameEl.parentNode;parent.insertBefore(wrap,nameEl);wrap.appendChild(nameEl);
+  var drop=document.createElement('div');drop.className='ac-drop';wrap.appendChild(drop);
+  var selIdx=-1;
+  function fill(entry){
+    nameEl.value=entry.name;
+    var a=document.getElementById(addrId);if(a&&entry.address){a.value=entry.address;a.dispatchEvent(new Event('change'));}
+    if(phoneId){var p=document.getElementById(phoneId);if(p&&entry.phone)p.value=entry.phone;}
+  }
+  function showDrop(items){
+    selIdx=-1;
+    if(!items.length){drop.classList.remove('show');drop.innerHTML='';return;}
+    drop.innerHTML=items.slice(0,10).map(function(e){
+      return '<div class="ac-item" data-name="'+e.name.replace(/"/g,'&quot;')+'" style="display:flex;justify-content:space-between;gap:10px"><span style="color:var(--text)">'+e.name+'</span><span style="color:var(--text3);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:55%">'+(e.address||'')+'</span></div>';
+    }).join('');
+    drop.classList.add('show');
+    drop.querySelectorAll('.ac-item').forEach(function(item){
+      item.addEventListener('mousedown',function(e){e.preventDefault();});
+      item.addEventListener('click',function(){var en=tmsLookupLocation(this.dataset.name);if(en)fill(en);drop.classList.remove('show');});
+    });
+  }
+  nameEl.addEventListener('input',function(){
+    var q=this.value.toLowerCase().trim();
+    if(!q){drop.classList.remove('show');return;}
+    showDrop(tmsGetLocationBook().filter(function(e){return e.name.toLowerCase().indexOf(q)!==-1;}));
+  });
+  nameEl.addEventListener('keydown',function(e){
+    var items=drop.querySelectorAll('.ac-item');
+    if(!items.length)return;
+    if(e.key==='ArrowDown'){e.preventDefault();selIdx=Math.min(selIdx+1,items.length-1);items.forEach(function(i,n){i.classList.toggle('sel',n===selIdx);});}
+    else if(e.key==='ArrowUp'){e.preventDefault();selIdx=Math.max(selIdx-1,0);items.forEach(function(i,n){i.classList.toggle('sel',n===selIdx);});}
+    else if(e.key==='Enter'&&selIdx>=0){e.preventDefault();items[selIdx].click();}
+    else if(e.key==='Escape'){drop.classList.remove('show');}
+  });
+  /* Exact-match autofill even when the name is typed without using the dropdown */
+  nameEl.addEventListener('change',function(){
+    var en=tmsLookupLocation(this.value);
+    if(!en)return;
+    var a=document.getElementById(addrId);if(a&&!a.value.trim()){a.value=en.address;a.dispatchEvent(new Event('change'));}
+    if(phoneId){var p=document.getElementById(phoneId);if(p&&!p.value.trim()&&en.phone)p.value=en.phone;}
+  });
+  nameEl.addEventListener('blur',function(){setTimeout(function(){drop.classList.remove('show');},180);});
+}
+/* Customer names, alphabetical — used for the typeable client field */
+function tmsGetCustomerNames(){
+  var D=window.TMS_DATA;
+  return (D.customers||[]).map(function(c){return c.name;}).filter(Boolean).sort(function(a,b){return a.toLowerCase()<b.toLowerCase()?-1:1;});
 }
 
 /* ── PAPS migration (runs on every data load to catch FM-imported loads) ── */
@@ -3889,7 +3977,6 @@ function tmsLoadEntry(){
   var D=window.TMS_DATA;
   var driverOpts=D.drivers.map(function(d){return '<option value="'+d.name+'">'+d.name+'</option>';}).join('');
   var truckOpts=D.equipment.filter(function(e){return (e.category==='Truck'||e.type==='Truck');}).map(function(e){return '<option value="'+(e.unit||e.id)+'">Unit '+(e.unit||e.id)+' · '+e.make+(e.model?' '+e.model:'')+(e.year?' '+e.year:'')+' ('+e.plate+')</option>';}).join('');
-  var custOpts='<option value="">— Select customer —</option>'+(D.customers||[]).map(function(c){return '<option value="'+c.name+'">'+c.name+(c.company?' · '+c.company:'')+'</option>';}).join('');
   document.getElementById('tms-body').innerHTML=
   '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'+
   '<div class="tms-section-title" style="margin:0;flex:1">New Shipment</div>'+
@@ -3909,10 +3996,10 @@ function tmsLoadEntry(){
   '<div id="tl-type-gate" style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.15);border-radius:8px;padding:12px;font-size:11px;color:var(--text3);margin-bottom:10px;max-width:700px">Select a Type and Direction above to continue.</div>'+
   '<div id="tl-details-section" style="display:none;max-width:700px">'+
   '<div class="tms-form-grid">'+
-  '<div><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC, Costco"></div>'+
+  '<div><label class="tms-label">Pickup Name</label><input class="tms-input" id="tl-pickup-name" placeholder="e.g. Walmart DC — autofills address" autocomplete="off"></div>'+
   '<div><label class="tms-label">Pickup Phone</label><input class="tms-input" id="tl-pickup-phone" placeholder="e.g. 514-555-0100"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Pickup Address</label><input class="tms-input" id="tl-orig" placeholder="e.g. 123 King St W, Toronto, ON" onchange="tmsAutoRoute()"></div>'+
-  '<div><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot, Amazon FC"></div>'+
+  '<div><label class="tms-label">Delivery Name</label><input class="tms-input" id="tl-delivery-name" placeholder="e.g. Home Depot — autofills address" autocomplete="off"></div>'+
   '<div><label class="tms-label">Delivery Phone</label><input class="tms-input" id="tl-delivery-phone" placeholder="e.g. 312-555-0200"></div>'+
   '<div class="tms-form-full"><label class="tms-label">Delivery Address</label>'+
   '<div style="display:flex;gap:6px"><input class="tms-input" id="tl-dest" placeholder="e.g. 456 Michigan Ave, Chicago, IL" onchange="tmsAutoRoute()" style="flex:1"><select class="tms-select" id="tl-terminal-dest" onchange="tmsSelectTerminalDest(this)" style="flex:0 0 auto;max-width:160px"><option value="">Or Terminal ↓</option></select></div>'+
@@ -3936,7 +4023,7 @@ function tmsLoadEntry(){
   '<div><label class="tms-label">Trailer #</label><input class="tms-input" id="tl-trailer-id" placeholder="e.g. T-101"></div>'+
   '<div><label class="tms-label">Weight (lbs)</label><input class="tms-input" id="tl-wgt" placeholder="e.g. 42000" type="number"></div>'+
   '<div><label class="tms-label">Commodity</label><input class="tms-input" id="tl-com" placeholder="e.g. Electronics"></div>'+
-  '<div><label class="tms-label">Customer</label><div style="display:flex;gap:6px;align-items:center"><select class="tms-select" id="tl-cust" style="flex:1">'+custOpts+'</select><button class="tms-btn sm" onclick="tmsTab(\'customers\')" style="white-space:nowrap;flex-shrink:0">+ New</button></div></div>'+
+  '<div><label class="tms-label">Customer</label><div style="display:flex;gap:6px;align-items:center"><input class="tms-input" id="tl-cust" placeholder="Type or pick a client…" autocomplete="off" style="flex:1"><button class="tms-btn sm" onclick="tmsTab(\'customers\')" style="white-space:nowrap;flex-shrink:0">+ New</button></div></div>'+
   '<div><label class="tms-label">Revenue ($)</label><input class="tms-input" id="tl-rev" type="number" placeholder="3400"></div>'+
   '<div><label class="tms-label">Pickup Date</label><input class="tms-input" id="tl-pickup-date" type="date"></div>'+
   '<div><label class="tms-label">Pickup Time</label><input class="tms-input" id="tl-pickup-time" type="time"></div>'+
@@ -3955,6 +4042,11 @@ function tmsLoadEntry(){
   setTimeout(function(){
     var o=document.getElementById('tl-orig');if(o)tmsBindAC(o);
     var d=document.getElementById('tl-dest');if(d)tmsBindAC(d);
+    /* Name → address (+phone) autofill for pickup and delivery */
+    tmsBindNameAC('tl-pickup-name','tl-orig','tl-pickup-phone');
+    tmsBindNameAC('tl-delivery-name','tl-dest','tl-delivery-phone');
+    /* Typeable, alphabetical client field */
+    var c=document.getElementById('tl-cust');if(c)tmsBindAC(c,tmsGetCustomerNames);
   },0);
 }
 
@@ -4201,6 +4293,9 @@ function tmsAddLoad(postToBoard){
   D.loads.push(load);
   tmsSaveLocation(orig);
   tmsSaveLocation(dest);
+  /* Learn name → address (+phone) links so future entries autofill */
+  tmsUpsertLocation(pickupName,orig,pickupPhone);
+  tmsUpsertLocation(delivName,dest,delivPhone);
   if(!isOutsourced&&drv){
     var dObj=D.drivers.find(function(x){return x.name===drv;});
     if(dObj){
@@ -4245,8 +4340,8 @@ async function tmsParsePdfTender(input){
     var fields={orig:parsed.origin,dest:parsed.dest,com:parsed.commodity,wgt:parsed.weight?parsed.weight.replace(/[^0-9.]/g,''):'',rev:parsed.revenue||'',notes:parsed.notes};
     Object.keys(fields).forEach(function(k){var el=document.getElementById('tl-'+k);if(el&&fields[k])el.value=fields[k];});
     if(parsed.loadType){var sel=document.getElementById('tl-type');if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===parsed.loadType){sel.selectedIndex=i;break;}}}}
-    /* Fill customer dropdown */
-    if(parsed.customer){var csel=document.getElementById('tl-cust');if(csel){for(var j=0;j<csel.options.length;j++){if(csel.options[j].text.indexOf(parsed.customer)!==-1){csel.selectedIndex=j;break;}}}}
+    /* Fill customer field */
+    if(parsed.customer){var csel=document.getElementById('tl-cust');if(csel)csel.value=parsed.customer;}
     if(status)status.innerHTML='✅ Tender parsed — fields filled from PDF. Review before creating load.';
     tmsAutoRoute();
     sfxSuccess();
@@ -4302,7 +4397,7 @@ function tmsParseEdi(){
     var f={orig:parsed.origin,dest:parsed.dest,com:parsed.commodity,notes:parsed.notes};
     Object.keys(f).forEach(function(k){var el=document.getElementById('tl-'+k);if(el&&f[k])el.value=f[k];});
     if(parsed.loadType){var sel=document.getElementById('tl-type');if(sel){for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===parsed.loadType){sel.selectedIndex=i;break;}}}}
-    if(parsed.customer){var csel=document.getElementById('tl-cust');if(csel){for(var j=0;j<csel.options.length;j++){if(csel.options[j].text.indexOf(parsed.customer)!==-1){csel.selectedIndex=j;break;}}}}
+    if(parsed.customer){var csel=document.getElementById('tl-cust');if(csel)csel.value=parsed.customer;}
     var status=document.getElementById('tender-parse-status');
     if(status){status.style.display='';status.innerHTML='✅ EDI parsed — load form filled. Reference: '+(parsed.ref||'N/A');}
     document.getElementById('edi-overlay').remove();
@@ -6193,7 +6288,8 @@ function tmsRemoveDriver(id){var D=window.TMS_DATA;D.drivers=D.drivers.filter(fu
 function tmsCustomers(){
   var D=window.TMS_DATA;
   if(!D.customers)D.customers=[];
-  var custCards=D.customers.length?D.customers.map(function(c){
+  var sortedCusts=(D.customers||[]).slice().sort(function(a,b){return (a.name||'').toLowerCase()<(b.name||'').toLowerCase()?-1:1;});
+  var custCards=sortedCusts.length?sortedCusts.map(function(c){
     return '<div class="tms-fleet-card">'+
     '<div class="tms-fleet-hdr"><div class="tms-fleet-id">'+c.name+'</div>'+
     '<button class="tms-btn sm" onclick="tmsRemoveCustomer(\''+c.id+'\')" style="color:rgba(255,80,80,0.7);background:rgba(255,80,80,0.07);border-color:rgba(255,80,80,0.2)">Remove</button></div>'+
@@ -8600,6 +8696,7 @@ window.TMS_DATA={
   ],
   equipment:[],
   customers:[],
+  locationBook:[],
   customs:[],
   warehouse:{bays:[],log:[]},
   permits:[],
