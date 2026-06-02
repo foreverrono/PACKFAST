@@ -1332,8 +1332,9 @@ async function _sbLoadTMS(){
   try{
     var os=await sb.from('org_settings').select('data').eq('id','singleton').maybeSingle();
     var s=os&&os.data&&os.data.data;
-    if(s){if(typeof s.loadSeq==='number')D.loadSeq=s.loadSeq;if(typeof s.driverPayRate==='number')D.driverPayRate=s.driverPayRate;if(s.payRates)D.payRates=s.payRates;if(s.finances)D.finances=s.finances;if(s.driverWeekPaid)D.driverWeekPaid=s.driverWeekPaid;if(s.ownerOpWeekPaid)D.ownerOpWeekPaid=s.ownerOpWeekPaid;if(s.savedLocations)D.savedLocations=s.savedLocations;if(s.pendingInvoiceLoads)D.pendingInvoiceLoads=s.pendingInvoiceLoads;}
+    if(s){if(typeof s.loadSeq==='number')D.loadSeq=s.loadSeq;if(typeof s.driverPayRate==='number')D.driverPayRate=s.driverPayRate;if(s.payRates)D.payRates=s.payRates;if(s.finances)D.finances=s.finances;if(s.driverWeekPaid)D.driverWeekPaid=s.driverWeekPaid;if(s.ownerOpWeekPaid)D.ownerOpWeekPaid=s.ownerOpWeekPaid;if(s.savedLocations)D.savedLocations=s.savedLocations;if(s.pendingInvoiceLoads)D.pendingInvoiceLoads=s.pendingInvoiceLoads;if(s.trips)D.trips=s.trips;if(s.partsRequests)D.partsRequests=s.partsRequests;}
   }catch(e){}
+  _sbInitSnap(); /* baseline so future edits diff to only the changed rows */
   console.log('[sb] hydrated '+(D.loads||[]).length+' loads from Supabase');
   try{toast('Supabase: loaded '+(D.loads||[]).length+' loads ✓');}catch(e){}
   try{if(typeof _tmsActiveGroup!=='undefined'){var sub=(_tmsActiveSub&&_tmsActiveSub[_tmsActiveGroup])||_tmsActiveGroup||'dashboard';_tmsDispatch(sub);}}catch(e){}
@@ -1368,6 +1369,7 @@ function _sbAfterAuth(){
   try{var ac=document.getElementById('admin-card-wrap');if(ac)ac.style.display='';document.querySelectorAll('.sel-card-wrap').forEach(function(w){w.style.display='';});subMenuCache={};}catch(e){}
   try{show('s-select');}catch(e){}
   _sbLoadTMS();
+  _sbRealtime();
 }
 async function _sbBootstrap(){
   var sb=_sbClient();
@@ -1377,7 +1379,76 @@ async function _sbBootstrap(){
   if(sess&&sess.data&&sess.data.session){_sbAfterAuth();}
   else{_sbLoginPrompt();}
 }
+/* ── Phase 4: per-record writes (diff sync — only changed rows are written) ── */
+var _SB_TABLES=[['loads','loads'],['customers','customers'],['drivers','drivers'],['equipment','equipment'],['carriers','carriers'],['ownerOperators','owner_operators'],['locationBook','locations'],['clientInvoices','invoices']];
+var _sbSnap={};
+function _sbSettingsObj(){var D=window.TMS_DATA;return {loadSeq:D.loadSeq||3923,driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],trips:D.trips||[],partsRequests:D.partsRequests||[]};}
+function _sbInitSnap(){
+  var D=window.TMS_DATA;_sbSnap={};
+  _SB_TABLES.forEach(function(m){var snap={};(D[m[0]]||[]).forEach(function(o){if(o&&o.id!=null)snap[String(o.id)]=JSON.stringify(o);});_sbSnap[m[1]]=snap;});
+  _sbSnap.__settings=JSON.stringify(_sbSettingsObj());
+}
+/* Patch the snapshot for one row arriving via realtime, so the local diff
+   won't try to re-write or delete another user's change (used in Phase 5). */
+function _sbSnapSet(table,id,obj){if(!_sbSnap[table])_sbSnap[table]={};_sbSnap[table][String(id)]=JSON.stringify(obj);}
+function _sbSnapDel(table,id){if(_sbSnap[table])delete _sbSnap[table][String(id)];}
+async function _sbSync(){
+  var sb=_sbClient();if(!sb)return;
+  var D=window.TMS_DATA;
+  for(var mi=0;mi<_SB_TABLES.length;mi++){
+    var jsKey=_SB_TABLES[mi][0],table=_SB_TABLES[mi][1];
+    var prev=_sbSnap[table]||{},cur={},upserts=[];
+    (D[jsKey]||[]).forEach(function(o){
+      if(!o||o.id==null)return;
+      var id=String(o.id),js=JSON.stringify(o);cur[id]=js;
+      if(prev[id]!==js)upserts.push({id:id,data:o});
+    });
+    var deletes=Object.keys(prev).filter(function(id){return !(id in cur);});
+    try{
+      if(upserts.length){var r=await sb.from(table).upsert(upserts);if(r.error)throw r.error;}
+      if(deletes.length){var r2=await sb.from(table).delete().in('id',deletes);if(r2.error)throw r2.error;}
+      _sbSnap[table]=cur;
+    }catch(e){console.warn('[sb] sync '+table+':',e.message);try{toast('⚠️ Supabase save failed ('+table+')');sfxError();}catch(_){}}
+  }
+  var sjs=JSON.stringify(_sbSettingsObj());
+  if(_sbSnap.__settings!==sjs){
+    try{var r3=await sb.from('org_settings').upsert([{id:'singleton',data:_sbSettingsObj()}]);if(r3.error)throw r3.error;_sbSnap.__settings=sjs;}catch(e){console.warn('[sb] settings:',e.message);}
+  }
+}
+var _sbSyncTimer=null;
+function _sbScheduleSync(){window._tmsDirty=true;clearTimeout(_sbSyncTimer);_sbSyncTimer=setTimeout(function(){_sbSync().then(function(){window._tmsDirty=false;});},800);}
+/* ── Phase 5: realtime — another user's add/edit/delete pushes here live ── */
+var _sbChannel=null;
+function _sbRealtime(){
+  var sb=_sbClient();if(!sb||_sbChannel)return;
+  _sbChannel=sb.channel('pf-tms');
+  _SB_TABLES.forEach(function(m){
+    _sbChannel.on('postgres_changes',{event:'*',schema:'public',table:m[1]},function(p){_sbApplyChange(m[0],m[1],p);});
+  });
+  _sbChannel.on('postgres_changes',{event:'*',schema:'public',table:'org_settings'},function(p){
+    var s=p.new&&p.new.data;if(!s)return;var D=window.TMS_DATA;
+    if(typeof s.loadSeq==='number')D.loadSeq=Math.max(D.loadSeq||3923,s.loadSeq);
+    if(s.payRates)D.payRates=s.payRates;if(s.finances)D.finances=s.finances;_sbSnap.__settings=JSON.stringify(_sbSettingsObj());
+  });
+  _sbChannel.subscribe(function(st){if(st==='SUBSCRIBED')console.log('[sb] realtime live');});
+}
+function _sbApplyChange(jsKey,table,p){
+  var D=window.TMS_DATA;if(!D[jsKey])D[jsKey]=[];var arr=D[jsKey];
+  if(p.eventType==='DELETE'){
+    var oid=p.old&&p.old.id;if(oid==null)return;
+    var i=arr.findIndex(function(o){return String(o.id)===String(oid);});if(i>=0)arr.splice(i,1);
+    _sbSnapDel(table,oid);
+  }else{
+    var row=p.new;if(!row||row.data==null)return;var obj=row.data,id=String(row.id);
+    var j=arr.findIndex(function(o){return String(o.id)===id;});
+    if(j>=0)arr[j]=obj;else arr.push(obj);
+    _sbSnapSet(table,id,obj);
+  }
+  /* refresh the current list view, but never disrupt an open load editor */
+  if(!window._tmsEditing){try{if(typeof _tmsActiveGroup!=='undefined'){var sub=(_tmsActiveSub&&_tmsActiveSub[_tmsActiveGroup])||_tmsActiveGroup||'dashboard';_tmsDispatch(sub);}}catch(e){}}
+}
 function _fbPushTMS(){
+  if(USE_SUPABASE){_sbScheduleSync();return;} /* per-record diff writes to Supabase */
   _blobSaveTMS(); /* always persist to Vercel Blob */
   if(!FB_ENABLED||!_fbDB)return;
   var D=window.TMS_DATA||{};
