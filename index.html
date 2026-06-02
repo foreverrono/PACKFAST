@@ -1212,28 +1212,36 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
 
 /* ── Blob save (debounced 1 s so rapid edits coalesce into one write) ── */
 var _blobSaveTimer=null;
-function _blobSaveTMS(){
-  clearTimeout(_blobSaveTimer);
-  _blobSaveTimer=setTimeout(function(){
-    var D=window.TMS_DATA||{};
-    fetch('/api/blob-store?key=tms',{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],loadSeq:D.loadSeq||3923,pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]})
-    }).then(function(r){if(!r.ok){console.warn('[packfast] blob save HTTP',r.status);try{toast('⚠️ Save failed (HTTP '+r.status+') — data not stored');sfxError();}catch(e){}}})
-      .catch(function(e){console.warn('[packfast] blob save:',e.message);try{toast('⚠️ Save failed — check connection');sfxError();}catch(_){}});
-  },1000);
+function _blobPayload(){
+  var D=window.TMS_DATA||{};
+  return JSON.stringify({loads:D.loads||[],trips:D.trips||[],drivers:D.drivers||[],equipment:D.equipment||[],driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},partsRequests:D.partsRequests||[],clientInvoices:D.clientInvoices||[],carriers:D.carriers||[],ownerOperators:D.ownerOperators||[],savedLocations:D.savedLocations||[],locationBook:D.locationBook||[],loadSeq:D.loadSeq||3923,pendingInvoiceLoads:D.pendingInvoiceLoads||[],driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},customers:D.customers||[]});
 }
+function _blobDoSave(keepalive){
+  var opts={method:'PUT',headers:{'Content-Type':'application/json'},body:_blobPayload()};
+  if(keepalive)opts.keepalive=true;
+  return fetch('/api/blob-store?key=tms',opts)
+    .then(function(r){if(r.ok){window._tmsDirty=false;}else{console.warn('[packfast] blob save HTTP',r.status);try{toast('⚠️ Save failed (HTTP '+r.status+') — data not stored');sfxError();}catch(e){}}})
+    .catch(function(e){console.warn('[packfast] blob save:',e.message);try{toast('⚠️ Save failed — check connection');sfxError();}catch(_){}});
+}
+function _blobSaveTMS(){
+  window._tmsDirty=true;
+  clearTimeout(_blobSaveTimer);
+  _blobSaveTimer=setTimeout(function(){_blobDoSave(false);},1000);
+}
+/* Force any pending save out immediately (e.g. before the tab is hidden/closed) */
+function _blobFlush(){clearTimeout(_blobSaveTimer);if(window._tmsDirty)_blobDoSave(true);}
 
 /* ── Blob load: called on startup, restores saved state then refreshes UI ── */
-function _blobLoadTMS(){
-  fetch('/api/blob-store?key=tms').then(function(r){return r.json();}).then(function(resp){
+function _blobLoadTMS(cb){
+  fetch('/api/blob-store?key=tms',{cache:'no-store'}).then(function(r){return r.json();}).then(function(resp){
     var d=resp.data;
-    if(!d||!window.TMS_DATA)return;
+    if(!d||!window.TMS_DATA){if(typeof cb==='function')cb();return;}
     var D=window.TMS_DATA;
-    if(d.loads&&d.loads.length>=D.loads.length)D.loads=d.loads;
-    if(d.trips&&d.trips.length>=(D.trips||[]).length)D.trips=d.trips;
-    if(d.equipment&&d.equipment.length>=(D.equipment||[]).length)D.equipment=d.equipment;
+    /* Cloud is the source of truth: take it whenever it has data (no count guard).
+       _cloudLoaded gates the read-only seed merge so it never overrides the cloud. */
+    if(Array.isArray(d.loads)&&d.loads.length>0){D.loads=d.loads;window._cloudLoaded=true;}
+    if(Array.isArray(d.trips))D.trips=d.trips;
+    if(Array.isArray(d.equipment))D.equipment=d.equipment;
     if(d.drivers&&d.drivers.length>0)D.drivers=d.drivers;
     if(typeof d.driverPayRate==='number')D.driverPayRate=d.driverPayRate;
     if(d.finances&&(d.finances.expenses!==undefined||d.finances.invoices))D.finances=Object.assign(D.finances||{},d.finances);
@@ -1257,7 +1265,8 @@ function _blobLoadTMS(){
         _tmsDispatch(sub);
       }
     }catch(e){}
-  }).catch(function(e){console.warn('[packfast] blob load:',e.message);});
+    if(typeof cb==='function')cb();
+  }).catch(function(e){console.warn('[packfast] blob load:',e.message);if(typeof cb==='function')cb();});
 }
 
 var _fbCfg={
@@ -1283,6 +1292,15 @@ var _fbDB=null;
     _fbListenTMS();
   }catch(e){console.warn('[packfast] Firebase init:',e.message);}
 })();
+/* ── Cross-device freshness: re-pull latest from cloud when the tab regains focus
+   (skipped while editing a load or with an unsaved change, so it never clobbers
+   in-progress work), and flush any pending save when the tab is hidden/closed. ── */
+window.addEventListener('focus',function(){if(!window._tmsDirty&&!window._tmsEditing)_blobLoadTMS();});
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden){_blobFlush();}
+  else if(!window._tmsDirty&&!window._tmsEditing){_blobLoadTMS();}
+});
+window.addEventListener('pagehide',function(){_blobFlush();});
 function _fbPushTMS(){
   _blobSaveTMS(); /* always persist to Vercel Blob */
   if(!FB_ENABLED||!_fbDB)return;
@@ -2146,6 +2164,8 @@ function tryLogin(){
 }
 function completeLogin(found){
   currentUser=found;
+  /* Pull the latest from the cloud on every sign-in so no device shows stale data */
+  try{_blobLoadTMS();}catch(e){}
   sfxLogin();burst();
   burstAt(canvas.width/2,canvas.height/2,30,'78,240,196');
   setGreeting();
@@ -3567,6 +3587,7 @@ function tmsSub(key,g){
   sfxNav();
 }
 function _tmsDispatch(key){
+  window._tmsEditing=false; /* on a list/tab view — focus-refetch is safe again */
   if(key==='dashboard')tmsDashboard();
   else if(key==='transport')tmsTransport();
   else if(key==='loadboard')tmsLoadBoard();
@@ -4707,6 +4728,7 @@ function tmsViewLoad(id,tab){
   var D=window.TMS_DATA;
   var l=D.loads.find(function(x){return x.id===id;});
   if(!l)return;
+  window._tmsEditing=true; /* suppress focus-refetch while a load editor is open */
   /* Bootstrap stops array from flat fields if missing or not in our format */
   var _stopsOk=l.stops&&l.stops.length&&l.stops[0]&&('type' in l.stops[0]);
   if(!_stopsOk){
@@ -11200,6 +11222,10 @@ async function helpSend(){
 function mergeFMData(){
   var D=window.TMS_DATA;
   if(!D)return setTimeout(mergeFMData,100);
+  /* The cloud blob is the source of truth. Only import the read-only seed
+     (api/tms-data.js) when the cloud has no data yet (first run) — otherwise
+     it would re-add/override loads, drivers and customers the cloud already owns. */
+  if(window._cloudLoaded)return;
   var existingIds=new Set(D.loads.map(function(l){return l.id;}));
   var existingRefs=new Set(D.loads.map(function(l){return(l.ref||'').trim();}).filter(Boolean));
   var existingTrips=new Set(D.loads.map(function(l){return(l.trip_name||'').trim();}).filter(Boolean));
