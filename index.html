@@ -17,6 +17,7 @@
 <!-- Firebase SDK (compat) — fill in config below to enable app sync -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#050508;--surface:#0b0b14;--surface2:#10101a;
@@ -1205,10 +1206,14 @@ body::after{content:'';position:fixed;bottom:-140px;right:-140px;width:480px;hei
 </div>
 
 <script>
-/* ── PERSISTENCE: Vercel Blob (always-on) + optional Firebase ──────────────
-   Vercel Blob is the primary store — no config required, works automatically.
-   Firebase is optional; fill in config below to enable real-time multi-device sync.
-   ────────────────────────────────────────────────────────────────────────── */
+/* ── PERSISTENCE: Vercel Blob (current) ──→ Supabase (migration in progress) ──
+   Default = Vercel Blob (unchanged, production). Open with ?sb=1 to use the new
+   Supabase Postgres path (read + auth) — gated so production is never affected
+   until we flip the default. ──────────────────────────────────────────────── */
+var PF_SB_URL='https://ykuncfakwfzjltlfnvhp.supabase.co';
+var PF_SB_KEY='sb_publishable_TzZi46dxkI2KK6hDJE1a2w_8lQbnm-D';
+var USE_SUPABASE=/[?&]sb=1/.test(location.search);
+var _sb=null;
 
 /* ── Blob save (debounced 1 s so rapid edits coalesce into one write) ── */
 var _blobSaveTimer=null;
@@ -1281,6 +1286,7 @@ var _fbCfg={
 var FB_ENABLED=false;
 var _fbDB=null;
 (function(){
+  if(USE_SUPABASE){_sbBootstrap();return;} /* ?sb=1 → Supabase path */
   /* Always load from blob on startup */
   _blobLoadTMS();
   try{
@@ -1295,12 +1301,82 @@ var _fbDB=null;
 /* ── Cross-device freshness: re-pull latest from cloud when the tab regains focus
    (skipped while editing a load or with an unsaved change, so it never clobbers
    in-progress work), and flush any pending save when the tab is hidden/closed. ── */
-window.addEventListener('focus',function(){if(!window._tmsDirty&&!window._tmsEditing)_blobLoadTMS();});
+window.addEventListener('focus',function(){if(!USE_SUPABASE&&!window._tmsDirty&&!window._tmsEditing)_blobLoadTMS();});
 document.addEventListener('visibilitychange',function(){
+  if(USE_SUPABASE)return;
   if(document.hidden){_blobFlush();}
   else if(!window._tmsDirty&&!window._tmsEditing){_blobLoadTMS();}
 });
-window.addEventListener('pagehide',function(){_blobFlush();});
+window.addEventListener('pagehide',function(){if(!USE_SUPABASE)_blobFlush();});
+/* ════ SUPABASE PATH (Phase 3: read + auth, gated by ?sb=1) ════════════════ */
+function _sbClient(){if(!_sb&&USE_SUPABASE&&window.supabase){_sb=window.supabase.createClient(PF_SB_URL,PF_SB_KEY);}return _sb;}
+async function _sbAll(table){
+  var sb=_sbClient(),all=[],from=0,size=1000;
+  while(true){
+    var res=await sb.from(table).select('data').range(from,from+size-1);
+    if(res.error)throw res.error;
+    all=all.concat(res.data||[]);
+    if(!res.data||res.data.length<size)break;
+    from+=size;
+  }
+  return all;
+}
+async function _sbLoadTMS(){
+  var sb=_sbClient();if(!sb)return;
+  var D=window.TMS_DATA;
+  var MAP=[['loads','loads'],['customers','customers'],['drivers','drivers'],['equipment','equipment'],['carriers','carriers'],['ownerOperators','owner_operators'],['locationBook','locations'],['clientInvoices','invoices']];
+  for(var i=0;i<MAP.length;i++){
+    try{var rows=await _sbAll(MAP[i][1]);D[MAP[i][0]]=rows.map(function(r){return r.data;});}
+    catch(e){console.warn('[sb] load '+MAP[i][1]+':',e.message);}
+  }
+  try{
+    var os=await sb.from('org_settings').select('data').eq('id','singleton').maybeSingle();
+    var s=os&&os.data&&os.data.data;
+    if(s){if(typeof s.loadSeq==='number')D.loadSeq=s.loadSeq;if(typeof s.driverPayRate==='number')D.driverPayRate=s.driverPayRate;if(s.payRates)D.payRates=s.payRates;if(s.finances)D.finances=s.finances;if(s.driverWeekPaid)D.driverWeekPaid=s.driverWeekPaid;if(s.ownerOpWeekPaid)D.ownerOpWeekPaid=s.ownerOpWeekPaid;if(s.savedLocations)D.savedLocations=s.savedLocations;if(s.pendingInvoiceLoads)D.pendingInvoiceLoads=s.pendingInvoiceLoads;}
+  }catch(e){}
+  console.log('[sb] hydrated '+(D.loads||[]).length+' loads from Supabase');
+  try{toast('Supabase: loaded '+(D.loads||[]).length+' loads ✓');}catch(e){}
+  try{if(typeof _tmsActiveGroup!=='undefined'){var sub=(_tmsActiveSub&&_tmsActiveSub[_tmsActiveGroup])||_tmsActiveGroup||'dashboard';_tmsDispatch(sub);}}catch(e){}
+}
+function _sbLoginPrompt(){
+  if(document.getElementById('sb-login-overlay'))return;
+  var ov=document.createElement('div');ov.id='sb-login-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(5,5,8,0.97);z-index:100001;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.innerHTML='<div style="background:var(--surface);border:0.5px solid var(--border);border-radius:14px;padding:22px;max-width:380px;width:100%">'+
+    '<div style="font-size:15px;color:var(--accent);font-weight:600;margin-bottom:2px">PackFast · Supabase</div>'+
+    '<div style="font-size:11px;color:var(--text3);margin-bottom:16px">Sign in (Supabase test mode)</div>'+
+    '<input class="tms-input" id="sb-email" type="email" placeholder="Email" autocomplete="username" style="margin-bottom:8px">'+
+    '<input class="tms-input" id="sb-pass" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key===\'Enter\')_sbDoLogin()">'+
+    '<div id="sb-login-err" style="font-size:11px;color:rgba(255,90,90,0.95);margin-top:8px;min-height:14px"></div>'+
+    '<button class="tms-btn primary" style="width:100%;margin-top:6px" onclick="_sbDoLogin()">Sign In</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){var e=document.getElementById('sb-email');if(e)e.focus();},60);
+}
+async function _sbDoLogin(){
+  var sb=_sbClient();if(!sb)return;
+  var email=((document.getElementById('sb-email')||{}).value||'').trim();
+  var pass=(document.getElementById('sb-pass')||{}).value||'';
+  var err=document.getElementById('sb-login-err');if(err)err.textContent='Signing in…';
+  var res=await sb.auth.signInWithPassword({email:email,password:pass});
+  if(res.error){if(err)err.textContent=res.error.message;return;}
+  var ov=document.getElementById('sb-login-overlay');if(ov)ov.remove();
+  _sbAfterAuth();
+}
+function _sbAfterAuth(){
+  currentUser={id:'u_ahsan',name:'Ahsan',role:'superadmin',access:{all:true}};
+  try{var ac=document.getElementById('admin-card-wrap');if(ac)ac.style.display='';document.querySelectorAll('.sel-card-wrap').forEach(function(w){w.style.display='';});subMenuCache={};}catch(e){}
+  try{show('s-select');}catch(e){}
+  _sbLoadTMS();
+}
+async function _sbBootstrap(){
+  var sb=_sbClient();
+  if(!sb){setTimeout(_sbBootstrap,150);return;} /* wait for CDN to load */
+  sb.auth.onAuthStateChange(function(ev,session){if(!session&&ev==='SIGNED_OUT')_sbLoginPrompt();});
+  var sess=await sb.auth.getSession();
+  if(sess&&sess.data&&sess.data.session){_sbAfterAuth();}
+  else{_sbLoginPrompt();}
+}
 function _fbPushTMS(){
   _blobSaveTMS(); /* always persist to Vercel Blob */
   if(!FB_ENABLED||!_fbDB)return;
@@ -11220,6 +11296,7 @@ async function helpSend(){
    works from any machine without a locally-generated file.
    ────────────────────────────────────────────────────────────────────────── */
 function mergeFMData(){
+  if(USE_SUPABASE)return; /* Supabase already holds all loads incl. history */
   var D=window.TMS_DATA;
   if(!D)return setTimeout(mergeFMData,100);
   /* The cloud blob is the source of truth. Only import the read-only seed
