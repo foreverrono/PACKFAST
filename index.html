@@ -1332,9 +1332,13 @@ async function _sbLoadTMS(){
   try{
     var os=await sb.from('org_settings').select('data').eq('id','singleton').maybeSingle();
     var s=os&&os.data&&os.data.data;
-    if(s){if(typeof s.loadSeq==='number')D.loadSeq=s.loadSeq;if(typeof s.driverPayRate==='number')D.driverPayRate=s.driverPayRate;if(s.payRates)D.payRates=s.payRates;if(s.finances)D.finances=s.finances;if(s.driverWeekPaid)D.driverWeekPaid=s.driverWeekPaid;if(s.ownerOpWeekPaid)D.ownerOpWeekPaid=s.ownerOpWeekPaid;if(s.savedLocations)D.savedLocations=s.savedLocations;if(s.pendingInvoiceLoads)D.pendingInvoiceLoads=s.pendingInvoiceLoads;if(s.trips)D.trips=s.trips;if(s.partsRequests)D.partsRequests=s.partsRequests;}
+    if(s){if(typeof s.loadSeq==='number')D.loadSeq=s.loadSeq;if(typeof s.driverPayRate==='number')D.driverPayRate=s.driverPayRate;if(s.payRates)D.payRates=s.payRates;if(s.finances)D.finances=s.finances;if(s.driverWeekPaid)D.driverWeekPaid=s.driverWeekPaid;if(s.ownerOpWeekPaid)D.ownerOpWeekPaid=s.ownerOpWeekPaid;if(s.savedLocations)D.savedLocations=s.savedLocations;if(s.pendingInvoiceLoads)D.pendingInvoiceLoads=s.pendingInvoiceLoads;if(s.trips)D.trips=s.trips;if(s.partsRequests)D.partsRequests=s.partsRequests;
+      /* Supabase is source of truth: push migrated localStorage business data back into localStorage */
+      if(s._ls){window._sbHadLs=true;Object.keys(s._ls).forEach(function(k){try{if(s._ls[k]!=null)localStorage.setItem(k,s._ls[k]);}catch(e){}});}}
   }catch(e){}
   _sbInitSnap(); /* baseline so future edits diff to only the changed rows */
+  /* First Supabase load before any localStorage business data was uploaded → push this device's copy up once */
+  if(!window._sbHadLs){try{_sbSnap.__settings='';}catch(e){}_sbScheduleSync();}
   console.log('[sb] hydrated '+(D.loads||[]).length+' loads from Supabase');
   try{toast('Supabase: loaded '+(D.loads||[]).length+' loads ✓');}catch(e){}
   try{if(typeof _tmsActiveGroup!=='undefined'){var sub=(_tmsActiveSub&&_tmsActiveSub[_tmsActiveGroup])||_tmsActiveGroup||'dashboard';_tmsDispatch(sub);}}catch(e){}
@@ -1398,7 +1402,9 @@ async function _sbBootstrap(){
 /* ── Phase 4: per-record writes (diff sync — only changed rows are written) ── */
 var _SB_TABLES=[['loads','loads'],['customers','customers'],['drivers','drivers'],['equipment','equipment'],['carriers','carriers'],['ownerOperators','owner_operators'],['locationBook','locations'],['clientInvoices','invoices']];
 var _sbSnap={};
-function _sbSettingsObj(){var D=window.TMS_DATA;return {loadSeq:D.loadSeq||3923,driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],trips:D.trips||[],partsRequests:D.partsRequests||[]};}
+var _SB_LS_KEYS=['LOAD_BOARD_DATA','CARRIER_DATA','TMS_EXPENSE_DEFAULTS','TMS_TXN','QUOTE_REQUESTS'];
+function _sbBizLS(){var o={};_SB_LS_KEYS.forEach(function(k){var v=null;try{v=localStorage.getItem(k);}catch(e){}if(v!=null)o[k]=v;});return o;}
+function _sbSettingsObj(){var D=window.TMS_DATA;return {loadSeq:D.loadSeq||3923,driverPayRate:D.driverPayRate||28,payRates:D.payRates||{},finances:D.finances||{},driverWeekPaid:D.driverWeekPaid||{},ownerOpWeekPaid:D.ownerOpWeekPaid||{},savedLocations:D.savedLocations||[],pendingInvoiceLoads:D.pendingInvoiceLoads||[],trips:D.trips||[],partsRequests:D.partsRequests||[],_ls:_sbBizLS()};}
 function _sbInitSnap(){
   var D=window.TMS_DATA;_sbSnap={};
   _SB_TABLES.forEach(function(m){var snap={};(D[m[0]]||[]).forEach(function(o){if(o&&o.id!=null)snap[String(o.id)]=JSON.stringify(o);});_sbSnap[m[1]]=snap;});
@@ -5358,6 +5364,7 @@ function tmsSaveExpDefaults(){
     other:(document.getElementById('exp-other')||{}).value||''
   };
   localStorage.setItem('TMS_EXPENSE_DEFAULTS',JSON.stringify(def));
+  if(USE_SUPABASE)_sbScheduleSync();
   sfxSuccess();toast('Expense defaults saved');
 }
 function tmsEditLoad(id){
@@ -8469,11 +8476,11 @@ function sendPrompt(txt){openMod('business');}
    TMS — CARRIER ONBOARDING
    ════════════════════════════════════════ */
 function getCarriers(){try{return JSON.parse(localStorage.getItem('CARRIER_DATA')||'[]');}catch(e){return[];}}
-function saveCarriers(arr){localStorage.setItem('CARRIER_DATA',JSON.stringify(arr));}
+function saveCarriers(arr){localStorage.setItem('CARRIER_DATA',JSON.stringify(arr));if(USE_SUPABASE)_sbScheduleSync();}
 function getLoadBoard(){try{return JSON.parse(localStorage.getItem('LOAD_BOARD_DATA')||'[]');}catch(e){return[];}}
-function saveLoadBoard(arr){localStorage.setItem('LOAD_BOARD_DATA',JSON.stringify(arr));}
+function saveLoadBoard(arr){localStorage.setItem('LOAD_BOARD_DATA',JSON.stringify(arr));if(USE_SUPABASE)_sbScheduleSync();}
 function getQuoteRequests(){try{return JSON.parse(localStorage.getItem('QUOTE_REQUESTS')||'[]');}catch(e){return[];}}
-function saveQuoteRequests(arr){localStorage.setItem('QUOTE_REQUESTS',JSON.stringify(arr));}
+function saveQuoteRequests(arr){localStorage.setItem('QUOTE_REQUESTS',JSON.stringify(arr));if(USE_SUPABASE)_sbScheduleSync();}
 
 function tmsGetBestCarrier(loadType,orig,dest){
   var carriers=getCarriers().filter(function(c){return c.status==='approved';});
