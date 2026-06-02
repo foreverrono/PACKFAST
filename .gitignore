@@ -1,6 +1,7 @@
 node_modules/
 .env
 .env.local
+.env.migration
 .vercel/
 transport-data.js
 *.py
