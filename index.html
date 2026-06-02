@@ -1364,9 +1364,25 @@ async function _sbDoLogin(){
   var ov=document.getElementById('sb-login-overlay');if(ov)ov.remove();
   _sbAfterAuth();
 }
-function _sbAfterAuth(){
-  currentUser={id:'u_ahsan',name:'Ahsan',role:'superadmin',access:{all:true}};
-  try{var ac=document.getElementById('admin-card-wrap');if(ac)ac.style.display='';document.querySelectorAll('.sel-card-wrap').forEach(function(w){w.style.display='';});subMenuCache={};}catch(e){}
+async function _sbAfterAuth(){
+  var sb=_sbClient();
+  /* Build currentUser from the signed-in user's profile row (role + access) */
+  var prof=null,authUser=null;
+  try{
+    authUser=(await sb.auth.getUser()).data.user;
+    if(authUser){var pr=await sb.from('profiles').select('*').eq('id',authUser.id).maybeSingle();prof=pr&&pr.data;}
+  }catch(e){}
+  currentUser = prof
+    ? {id:prof.id,name:prof.name||(authUser&&authUser.email||'').split('@')[0]||'User',email:prof.email||(authUser&&authUser.email),role:prof.role||'dispatcher',access:prof.access||{}}
+    : {id:(authUser&&authUser.id)||'u_user',name:(authUser&&authUser.email||'User').split('@')[0],email:(authUser&&authUser.email),role:'dispatcher',access:{}};
+  /* Apply role-based access (mirrors completeLogin) */
+  try{
+    var priv=currentUser.role==='superadmin'||currentUser.role==='admin';
+    var ac=document.getElementById('admin-card-wrap');if(ac)ac.style.display=priv?'':'none';
+    if(priv){document.querySelectorAll('.sel-card-wrap').forEach(function(w){w.style.display='';});subMenuCache={};}
+    else if(typeof applyClientAccess==='function')applyClientAccess();
+  }catch(e){}
+  try{setGreeting();}catch(e){}
   try{show('s-select');}catch(e){}
   _sbLoadTMS();
   _sbRealtime();
@@ -2816,6 +2832,7 @@ function doLock(){
 function appLogout(){
   window.TMS_DATA&&(window.TMS_DATA.activeDriverSession=null);
   window._driverPortalTab='loads';
+  if(USE_SUPABASE&&_sb){try{if(_sbChannel){_sb.removeChannel(_sbChannel);_sbChannel=null;}_sb.auth.signOut();}catch(e){}}
   doLock();
 }
 function launchDriverPortal(){
