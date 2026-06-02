@@ -83,7 +83,7 @@ console.log('  historical (past=true) in merged:', histTotal);
 // ── upserts ──
 console.log('\n── MIGRATING ──');
 await upsert('loads', idRows(mergedLoads));
-await upsert('customers', idRows(blob.customers));
+await upsert('customers', idRows(blob.customers, (o,i)=>'CUST-'+(String(o.name||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||('mig-'+i))));
 await upsert('locations', idRows(blob.locationBook, (o,i)=>'LOC-mig-'+i));
 await upsert('drivers', idRows(blob.drivers));
 await upsert('equipment', idRows(blob.equipment));
