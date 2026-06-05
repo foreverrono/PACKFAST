@@ -3996,7 +3996,7 @@ function tmsDashboard(){
   });
 
   var totalAllLoads=D.loads.length;
-  var activeLoads=(window.FM_PENDING&&window.FM_PENDING.length)?window.FM_PENDING.length:D.loads.filter(function(l){return !l.past;}).length;
+  var activeLoads=D.loads.filter(_isActiveLoad).length;
 
   /* Monthly bars — last 12 months */
   var mKeys=Object.keys(monthly).sort().slice(-12);
@@ -4052,10 +4052,8 @@ function tmsDashboard(){
   }).join('');
 
   /* ── Ops summary counts ── */
-  var allActiveTms=D.loads.filter(function(l){return !l.past&&!l.fm_num&&!l.trip_name&&l.status!=='Delivered'&&l.status!=='DELIVERED';});
-  var fmActive=window.FM_PENDING||[];
-  var totalActive=fmActive.length+allActiveTms.length;
-  var pendingDispatch=allActiveTms.filter(function(l){return !l.dispatched&&(!l.driver||l.driver==='Unassigned'||l.status==='ASSIGNED');}).length;
+  var totalActive=D.loads.filter(_isActiveLoad).length;
+  var pendingDispatch=D.loads.filter(function(l){return _isActiveLoad(l)&&!l.dispatched&&(!l.driver||l.driver==='Unassigned'||l.status==='ASSIGNED');}).length;
   var today=new Date().toLocaleDateString();
   var delivToday=D.loads.filter(function(l){return (l.status==='Delivered'||l.status==='DELIVERED')&&l.deliveredDate===today;}).length;
 
@@ -4224,6 +4222,11 @@ function tmsDashPanel(id,src){
   panel.addEventListener('click',function(e){if(e.target===panel){panel.classList.remove('open');setTimeout(function(){panel.remove();},260);}});
 }
 var _tmsShowHistory=false;
+/* Single source of truth for "active load" — not yet delivered, not historical.
+   Used by Active Loads, Dashboard, and Dispatch so all three always match. */
+function _isActiveLoad(l){
+  return !l.past && l.status!=='Delivered' && l.status!=='DELIVERED';
+}
 /* Next load ID: a persisted, monotonic counter starting at TOI-M3924.
    Ignores the ~2,895 historical loads (migrated to TOI-M IDs up to ~3895) by
    starting above them, and skips any number already in use so it can never
@@ -4421,8 +4424,9 @@ function tmsLoadEntry(){
 function tmsTransport(){
   var D=window.TMS_DATA;
   var TMS_STATUS_COLORS={'ASSIGNED':'purple','EN_ROUTE_PICKUP':'blue','ARRIVED_PICKUP':'yellow','LOADED':'yellow','IN_TRANSIT':'purple','ARRIVED_DELIVERY':'blue','DELIVERED':'green','DELAYED':'red','AT_TERMINAL':'blue','In Transit':'purple','Picked Up':'yellow','At Border':'blue','Delivered':'green'};
-  var outsourcedCount=D.loads.filter(function(l){return !!l.assignedCarrierId;}).length;
-  var loads=D.loads.filter(function(l){return !l.assignedCarrierId;});
+  var outsourcedCount=D.loads.filter(function(l){return !!l.assignedCarrierId&&_isActiveLoad(l);}).length;
+  /* Active loads only — same definition as Dashboard and Dispatch */
+  var loads=D.loads.filter(function(l){return _isActiveLoad(l)&&!l.assignedCarrierId;});
   /* Date filter: Today / Upcoming / Past / All — keyed off pickup→delivery→created date */
   if(typeof window._tmsDateFilter==='undefined')window._tmsDateFilter='today';
   var filter=window._tmsDateFilter;
@@ -4441,7 +4445,7 @@ function tmsTransport(){
     var custLabel=custMatch?(custMatch.name||(custMatch.company)):cust;
     var assigneeCell=l.assignedCarrierId?'<span class="tms-badge yellow" style="font-size:8px">Carrier</span>':l.ownerOpId?'<span class="tms-badge purple" style="font-size:8px">OO</span> <span style="font-size:10px;color:var(--text2)">'+(l.ownerOpName||'').split(' · ')[0]+'</span>':l.driver||'—';
     return '<tr class="tms-tr" style="cursor:pointer" onclick="tmsViewLoad(\''+l.id+'\')">'+
-    '<td class="tms-td" style="color:var(--text)">'+l.id+'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div></td>'+
+    '<td class="tms-td" style="color:var(--text)">'+l.id+'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div>'+(l.pickupDate||l.deliveryDate?'<div style="font-size:9px;color:var(--text3)">'+(l.pickupDate||l.deliveryDate)+'</div>':'')+'</td>'+
     '<td class="tms-td" style="font-size:11px;color:var(--accent2);font-weight:500">'+custLabel+'</td>'+
     '<td class="tms-td" style="font-size:10px;max-width:220px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.origin||'—')+'</div><div style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ '+(l.dest||'—')+'</div></td>'+
     '<td class="tms-td" style="font-size:11px">'+assigneeCell+'</td>'+
@@ -6902,9 +6906,9 @@ function tmsDispatchCenter(){
   var D=window.TMS_DATA;
   var allLoads=D.loads.filter(function(l){return l.driver&&l.driver!=='—'&&l.driver!=='Unassigned';});
 
-  /* Split into active vs completed */
-  var active=allLoads.filter(function(l){return l.status!=='Delivered';});
-  var completed=allLoads.filter(function(l){return l.status==='Delivered';});
+  /* Split into active vs completed — same _isActiveLoad definition as Dashboard + Active Loads */
+  var active=allLoads.filter(function(l){return _isActiveLoad(l);});
+  var completed=allLoads.filter(function(l){return !_isActiveLoad(l);});
 
   /* Sort active: In Transit first, then Picked Up, At Border */
   var ORDER={'In Transit':0,'Picked Up':1,'At Border':2};
