@@ -4227,6 +4227,40 @@ var _tmsShowHistory=false;
 function _isActiveLoad(l){
   return !l.past && l.status!=='Delivered' && l.status!=='DELIVERED';
 }
+/* ── Date buckets (Today / Upcoming / Past) — same logic in Active Loads + Dispatch ──
+   Keyed off pickup → delivery → created date. YYYY-MM-DD is parsed as LOCAL time
+   (new Date('YYYY-MM-DD') would be UTC and shift the day west of Greenwich). */
+function _loadDayTs(l){
+  var s=l.pickupDate||l.deliveryDate||l.created||'';
+  if(!s)return null;
+  var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  var d=m?new Date(+m[1],+m[2]-1,+m[3]):new Date(s);
+  if(isNaN(d.getTime()))return null;
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+function _loadBucket(l){
+  var t=_loadDayTs(l);
+  if(t===null)return 'none';
+  var td=new Date();td.setHours(0,0,0,0);
+  return t===td.getTime()?'today':(t>td.getTime()?'upcoming':'past');
+}
+/* Pickup + delivery dates cell — shows why a load sits in its bucket */
+function _loadDatesCell(l){
+  var p=l.pickupDate||'',dd=l.deliveryDate||'';
+  if(!p&&!dd)return '<span style="font-size:9px;color:var(--text3)">—</span>';
+  return (p?'<div style="font-size:9px;color:var(--text2);white-space:nowrap" title="Pickup date">📦 '+p+'</div>':'')+
+         (dd?'<div style="font-size:9px;color:var(--text3);white-space:nowrap" title="Delivery date">🏁 '+dd+'</div>':'');
+}
+/* Today/Upcoming/Past/All tab strip; counts = active loads per bucket */
+function _dateTabsHtml(loads,filter,onclickFmt){
+  var counts={today:0,upcoming:0,past:0,all:loads.length};
+  loads.forEach(function(l){var b=_loadBucket(l);if(counts[b]!==undefined)counts[b]++;});
+  return [['today','Today'],['upcoming','Upcoming'],['past','Past'],['all','All']].map(function(t){
+    var on=filter===t[0];
+    return '<button class="tms-btn sm" onclick="'+onclickFmt.replace('{V}',t[0])+'" style="font-size:11px;'+(on?'background:rgba(224,123,32,0.18);border-color:rgba(224,123,32,0.55);color:var(--accent)':'')+'">'+t[1]+' ('+counts[t[0]]+')</button>';
+  }).join('');
+}
 /* Next load ID: a persisted, monotonic counter starting at TOI-M3924.
    Ignores the ~2,895 historical loads (migrated to TOI-M IDs up to ~3895) by
    starting above them, and skips any number already in use so it can never
@@ -4571,17 +4605,12 @@ function tmsTransport(){
   var outsourcedCount=D.loads.filter(function(l){return !!l.assignedCarrierId&&_isActiveLoad(l);}).length;
   /* Active loads only — same definition as Dashboard and Dispatch */
   var loads=D.loads.filter(function(l){return _isActiveLoad(l)&&!l.assignedCarrierId;});
-  /* Date filter: Today / Upcoming / Past / All — keyed off pickup→delivery→created date */
+  /* Date filter: Today / Upcoming / Past / All — shared _loadBucket logic (same as Dispatch) */
   if(typeof window._tmsDateFilter==='undefined')window._tmsDateFilter='today';
   var filter=window._tmsDateFilter;
-  var _today=new Date();_today.setHours(0,0,0,0);var _tT=_today.getTime();
-  function _loadDay(l){var s=l.pickupDate||l.deliveryDate||l.created||'';if(!s)return null;var d=new Date(s);if(isNaN(d.getTime()))return null;d.setHours(0,0,0,0);return d.getTime();}
-  function _bucket(l){var t=_loadDay(l);if(t===null)return 'none';if(t===_tT)return 'today';return t>_tT?'upcoming':'past';}
-  var counts={today:0,upcoming:0,past:0,all:loads.length};
-  loads.forEach(function(l){var b=_bucket(l);if(counts[b]!==undefined&&b!=='all')counts[b]++;});
-  var shownLoads=loads.filter(function(l){return filter==='all'?true:_bucket(l)===filter;});
+  var shownLoads=loads.filter(function(l){return filter==='all'?true:_loadBucket(l)===filter;});
   /* soonest first for today/upcoming; most-recent first for past/all */
-  shownLoads.sort(function(a,b){var ta=_loadDay(a),tb=_loadDay(b);ta=ta===null?0:ta;tb=tb===null?0:tb;return (filter==='upcoming'||filter==='today')?ta-tb:tb-ta;});
+  shownLoads.sort(function(a,b){var ta=_loadDayTs(a),tb=_loadDayTs(b);ta=ta===null?0:ta;tb=tb===null?0:tb;return (filter==='upcoming'||filter==='today')?ta-tb:tb-ta;});
   var loadRows=shownLoads.map(function(l){
     var cls=TMS_STATUS_COLORS[l.status]||'purple';
     var cust=l.customer||l.client||'—';
@@ -4591,17 +4620,16 @@ function tmsTransport(){
     return '<tr class="tms-tr" style="cursor:pointer" onclick="tmsViewLoad(\''+l.id+'\')">'+
     '<td class="tms-td" style="color:var(--text)">'+l.id+
       (l.clientRefNo?'<div style="font-size:9px;color:var(--accent)">Ref: '+_locEsc(l.clientRefNo)+'</div>':(l.ref?'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div>':''))+
-      (l.poNumber?'<div style="font-size:9px;color:var(--text3)">PO: '+_locEsc(l.poNumber)+'</div>':'')+
-      (l.pickupDate||l.deliveryDate?'<div style="font-size:9px;color:var(--text3)">'+(l.pickupDate||l.deliveryDate)+'</div>':'')+'</td>'+
+      (l.poNumber?'<div style="font-size:9px;color:var(--text3)">PO: '+_locEsc(l.poNumber)+'</div>':'')+'</td>'+
+    '<td class="tms-td">'+_loadDatesCell(l)+'</td>'+
     '<td class="tms-td" style="font-size:11px;color:var(--accent2);font-weight:500">'+custLabel+'</td>'+
     '<td class="tms-td" style="font-size:10px;max-width:220px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.origin||'—')+'</div><div style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ '+(l.dest||'—')+'</div></td>'+
     '<td class="tms-td" style="font-size:11px">'+assigneeCell+'</td>'+
     '<td class="tms-td"><span class="tms-badge '+cls+'" style="font-size:8px">'+(TMS_STATUS_LABELS[l.status]||l.status)+'</span></td>'+
     '<td class="tms-td" style="color:var(--accent2);font-size:11px">$'+(l.revenue||0).toLocaleString()+'</td>'+
     '</tr>';
-  }).join('')||'<tr><td colspan="6" class="tms-td" style="color:var(--text3);text-align:center;padding:16px">'+({today:'No loads scheduled for today.',upcoming:'No upcoming loads.',past:'No past loads.',all:'No loads yet.'}[filter]||'No loads.')+' <button class="tms-btn sm primary" onclick="tmsSub(\'loadentry\',\'loads\')" style="margin-left:8px">+ Create Load</button></td></tr>';
-  var _DF=[['today','Today'],['upcoming','Upcoming'],['past','Past'],['all','All']];
-  var dateTabs=_DF.map(function(t){var on=filter===t[0];return '<button class="tms-btn sm" onclick="window._tmsDateFilter=\''+t[0]+'\';tmsTransport()" style="font-size:11px;'+(on?'background:rgba(224,123,32,0.18);border-color:rgba(224,123,32,0.55);color:var(--accent)':'')+'">'+t[1]+' ('+counts[t[0]]+')</button>';}).join('');
+  }).join('')||'<tr><td colspan="7" class="tms-td" style="color:var(--text3);text-align:center;padding:16px">'+({today:'No loads scheduled for today.',upcoming:'No upcoming loads.',past:'No past loads.',all:'No loads yet.'}[filter]||'No loads.')+' <button class="tms-btn sm primary" onclick="tmsSub(\'loadentry\',\'loads\')" style="margin-left:8px">+ Create Load</button></td></tr>';
+  var dateTabs=_dateTabsHtml(loads,filter,"window._tmsDateFilter='{V}';tmsTransport()");
   document.getElementById('tms-body').innerHTML=
   '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">'+
   '<div class="tms-section-title" style="margin-bottom:0">Active Loads</div>'+
@@ -4612,7 +4640,7 @@ function tmsTransport(){
   '</div></div>'+
   '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'+dateTabs+'</div>'+
   '<div style="overflow-x:auto"><table class="tms-table"><thead><tr>'+
-  '<th class="tms-th">Load</th><th class="tms-th" style="color:var(--accent2)">Client</th><th class="tms-th">Route</th><th class="tms-th">Driver / OO</th><th class="tms-th">Status</th><th class="tms-th">Revenue</th>'+
+  '<th class="tms-th">Load</th><th class="tms-th">Dates</th><th class="tms-th" style="color:var(--accent2)">Client</th><th class="tms-th">Route</th><th class="tms-th">Driver / OO</th><th class="tms-th">Status</th><th class="tms-th">Revenue</th>'+
   '</tr></thead><tbody>'+loadRows+'</tbody></table></div>';
 }
 function tmsAutoRoute(){
@@ -7101,9 +7129,18 @@ function tmsDispatchCenter(){
   var active=allLoads.filter(function(l){return _isActiveLoad(l);});
   var completed=allLoads.filter(function(l){return !_isActiveLoad(l);});
 
-  /* Sort active: In Transit first, then Picked Up, At Border */
+  /* Date filter: Today / Upcoming / Past / All — shared _loadBucket logic (same as Active Loads) */
+  if(typeof window._dispDateFilter==='undefined')window._dispDateFilter='today';
+  var dFilter=window._dispDateFilter;
+  var activeAll=active;
+  active=activeAll.filter(function(l){return dFilter==='all'?true:_loadBucket(l)===dFilter;});
+  /* Sort active: In Transit first, then Picked Up, At Border; soonest date within a status */
   var ORDER={'In Transit':0,'Picked Up':1,'At Border':2};
-  active.sort(function(a,b){return (ORDER[a.status]||9)-(ORDER[b.status]||9);});
+  active.sort(function(a,b){
+    var s=(ORDER[a.status]||9)-(ORDER[b.status]||9);if(s)return s;
+    var ta=_loadDayTs(a),tb=_loadDayTs(b);ta=ta===null?0:ta;tb=tb===null?0:tb;
+    return (dFilter==='upcoming'||dFilter==='today')?ta-tb:tb-ta;
+  });
   /* Sort completed: most recent first (by trip number if available) */
   completed.sort(function(a,b){
     var an=parseInt((a.trip_name||'').replace(/\D/g,''))||0;
@@ -7129,6 +7166,7 @@ function tmsDispatchCenter(){
         '<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.origin||'—').split(',')[0]+'</div>'+
         '<div style="color:var(--text3)">→ '+(l.dest||'—').split(',')[0]+'</div>'+
       '</td>'+
+      '<td class="tms-td">'+_loadDatesCell(l)+'</td>'+
       '<td class="tms-td">'+
         '<div style="font-size:11px;color:var(--text)">'+(l.driver&&l.driver!=='Unassigned'?l.driver:'—')+'</div>'+
         (l.bookedBy&&l.bookedBy!=='—'&&l.bookedBy!==l.driver?'<div style="font-size:9px;color:var(--text3)">Entered by: '+l.bookedBy+'</div>':'')+
@@ -7148,34 +7186,34 @@ function tmsDispatchCenter(){
   }
 
   var activeHeader='<tr>'+
-    '<th class="tms-th">Trip</th><th class="tms-th">Route</th><th class="tms-th">Driver / Equipment</th>'+
+    '<th class="tms-th">Trip</th><th class="tms-th">Route</th><th class="tms-th">Dates</th><th class="tms-th">Driver / Equipment</th>'+
     '<th class="tms-th">Customer</th><th class="tms-th">Status</th><th class="tms-th">Revenue</th>'+
     '<th class="tms-th">Dispatch</th><th class="tms-th"></th>'+
   '</tr>';
   var completedHeader='<tr>'+
-    '<th class="tms-th">Trip</th><th class="tms-th">Route</th><th class="tms-th">Driver / Equipment</th>'+
+    '<th class="tms-th">Trip</th><th class="tms-th">Route</th><th class="tms-th">Dates</th><th class="tms-th">Driver / Equipment</th>'+
     '<th class="tms-th">Customer</th><th class="tms-th">Status</th><th class="tms-th">Revenue</th>'+
     '<th class="tms-th"></th>'+
   '</tr>';
 
   var activeRows=active.length?
     active.map(function(l){return loadRow(l,true);}).join(''):
-    '<tr><td colspan="8" class="tms-td" style="color:var(--text3);text-align:center;padding:24px;font-size:12px">No active loads right now.</td></tr>';
+    '<tr><td colspan="9" class="tms-td" style="color:var(--text3);text-align:center;padding:24px;font-size:12px">'+({today:'No active loads scheduled for today.',upcoming:'No upcoming active loads.',past:'No past-dated active loads.',all:'No active loads right now.'}[dFilter]||'No active loads.')+'</td></tr>';
 
   /* Completed: show latest 50 by default, with a toggle */
   var showAllComp=window._dispShowAllComp||false;
   var compVisible=showAllComp?completed:completed.slice(0,50);
   var completedRows=compVisible.length?
     compVisible.map(function(l){return loadRow(l,false);}).join(''):
-    '<tr><td colspan="7" class="tms-td" style="color:var(--text3);text-align:center;padding:24px;font-size:12px">No completed loads yet.</td></tr>';
+    '<tr><td colspan="8" class="tms-td" style="color:var(--text3);text-align:center;padding:24px;font-size:12px">No completed loads yet.</td></tr>';
 
-  /* KPI strip */
-  var totalRev=active.reduce(function(s,l){return s+(l.revenue||0);},0);
+  /* KPI strip — always over ALL active loads, regardless of the date filter */
+  var totalRev=activeAll.reduce(function(s,l){return s+(l.revenue||0);},0);
   var kpis=[
-    {label:'Active Loads',val:active.length,color:'var(--accent)'},
-    {label:'In Transit',val:active.filter(function(l){return l.status==='In Transit';}).length,color:'rgba(224,123,32,0.9)'},
-    {label:'Picked Up',val:active.filter(function(l){return l.status==='Picked Up';}).length,color:'#ffc83c'},
-    {label:'At Border',val:active.filter(function(l){return l.status==='At Border';}).length,color:'#5bc8f5'},
+    {label:'Active Loads',val:activeAll.length,color:'var(--accent)'},
+    {label:'In Transit',val:activeAll.filter(function(l){return l.status==='In Transit';}).length,color:'rgba(224,123,32,0.9)'},
+    {label:'Picked Up',val:activeAll.filter(function(l){return l.status==='Picked Up';}).length,color:'#ffc83c'},
+    {label:'At Border',val:activeAll.filter(function(l){return l.status==='At Border';}).length,color:'#5bc8f5'},
     {label:'Active Revenue',val:'$'+Math.round(totalRev).toLocaleString(),color:'var(--accent2)'},
     {label:'Completed (total)',val:completed.length,color:'var(--text3)'},
   ];
@@ -7200,8 +7238,9 @@ function tmsDispatchCenter(){
     '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'+
       '<div style="font-size:13px;font-weight:500;color:var(--text);letter-spacing:0.01em">Active Loads</div>'+
       '<div style="height:1px;flex:1;background:rgba(224,123,32,0.2)"></div>'+
-      '<span style="font-size:10px;color:var(--accent);background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.3);border-radius:20px;padding:2px 10px">'+active.length+' running</span>'+
+      '<span style="font-size:10px;color:var(--accent);background:rgba(224,123,32,0.1);border:0.5px solid rgba(224,123,32,0.3);border-radius:20px;padding:2px 10px">'+activeAll.length+' running</span>'+
     '</div>'+
+    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px">'+_dateTabsHtml(activeAll,dFilter,"window._dispDateFilter='{V}';tmsDispatchCenter()")+'</div>'+
     '<div style="overflow-x:auto;border:0.5px solid rgba(224,123,32,0.2);border-radius:12px;background:var(--surface2);margin-bottom:32px">'+
       '<table class="tms-table" style="min-width:760px"><thead>'+activeHeader+'</thead>'+
       '<tbody>'+activeRows+'</tbody></table>'+
