@@ -4241,6 +4241,53 @@ function _nextLoadId(){
   return 'TOI-M'+seq;
 }
 
+/* ── CLIENT REFERENCE UNIQUENESS ─────────────────────────────────────────
+   The Client Reference Number is the unique key for duplicate detection.
+   Historical (FileMaker) loads carry their reference in `paps`, so a new
+   reference is checked against both clientRefNo and paps. Blanks never match. */
+function tmsFindDupRef(ref,excludeId){
+  ref=(ref||'').trim().toUpperCase();
+  if(!ref)return null;
+  return (window.TMS_DATA.loads||[]).find(function(l){
+    if(excludeId&&l.id===excludeId)return false;
+    return (l.clientRefNo||'').trim().toUpperCase()===ref||(l.paps||'').trim().toUpperCase()===ref;
+  })||null;
+}
+/* Dark/orange duplicate warning pop-up: Cancel or proceed anyway */
+function tmsShowDupPopup(o){
+  var old=document.getElementById('dup-ref-overlay');if(old)old.remove();
+  var ov=document.createElement('div');
+  ov.id='dup-ref-overlay';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(6,6,15,0.85);backdrop-filter:blur(8px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+  var d=o.dup;
+  ov.innerHTML='<div style="background:#0e0e1c;border:1px solid rgba(224,123,32,0.5);border-radius:16px;padding:26px;width:100%;max-width:440px;box-shadow:0 24px 60px rgba(0,0,0,0.6)">'+
+    '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+    '<div style="width:34px;height:34px;border-radius:50%;background:rgba(224,123,32,0.15);border:1px solid rgba(224,123,32,0.4);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚠️</div>'+
+    '<div style="font-size:15px;color:var(--accent);font-weight:500">Duplicate Reference Number</div>'+
+    '</div>'+
+    '<div style="font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px">Client Reference <strong style="color:var(--accent2)">'+_locEsc(o.ref)+'</strong> is already used by:</div>'+
+    '<div style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--text);margin-bottom:18px">'+
+      '<strong>'+d.id+'</strong> · '+_locEsc(d.customer||'—')+
+      '<div style="font-size:10px;color:var(--text3);margin-top:3px">'+_locEsc((d.pickupDate||d.created||'')+(d.status?' · '+d.status:''))+(d.revenue?' · $'+(d.revenue||0).toLocaleString():'')+'</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:10px;justify-content:flex-end">'+
+    '<button class="tms-btn" id="dup-ref-cancel">Cancel</button>'+
+    '<button class="tms-btn primary" id="dup-ref-ok" style="border-color:rgba(224,123,32,0.6)">'+(o.confirmLabel||'Create anyway')+'</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('dup-ref-cancel').onclick=function(){ov.remove();if(o.onCancel)o.onCancel();};
+  document.getElementById('dup-ref-ok').onclick=function(){ov.remove();if(o.onConfirm)o.onConfirm();};
+  if(typeof sfxError==='function')sfxError();
+}
+/* onchange of a Client Reference field: warn immediately; Cancel clears the field */
+function tmsCheckDupRef(val,excludeId){
+  var dup=tmsFindDupRef(val,excludeId);
+  if(!dup)return;
+  var elId=excludeId?'vl-client-ref':'tl-client-ref';
+  tmsShowDupPopup({ref:(val||'').trim(),dup:dup,confirmLabel:'Keep anyway',
+    onCancel:function(){var el=document.getElementById(elId);if(el){el.value='';el.focus();}}});
+}
+
 /* ── SAVED LOCATIONS DIRECTORY (Pickup/Delivery blocks) ─────────────────── */
 /* Field ids for a stop side (s0, s1, … on the New Shipment form) */
 function _locCfg(side){return {nameId:'tl-'+side+'-name',phoneId:'tl-'+side+'-phone',addrId:'tl-'+side+'-addr'};}
@@ -4713,7 +4760,7 @@ function tmsTenderConfirm(){
   sfxSuccess();toast('Load added from tender · '+id);
 }
 
-function tmsAddLoad(postToBoard){
+function tmsAddLoad(postToBoard,forceDup){
   /* Stops come from the draft sequence; flat origin/dest = first pickup → last delivery */
   _neReadStops();
   var neStops=(window._neStops||[]).filter(function(s){return (s.address&&s.address.trim())||(s.name&&s.name.trim());});
@@ -4751,6 +4798,11 @@ function tmsAddLoad(postToBoard){
   var delivTime=lastD?(lastD.time||''):'';
   if(!direction){sfxError();toast('Select a shipment direction first');return;}
   if(!orig||!dest){sfxError();toast('Add at least one pickup and one delivery with addresses');return;}
+  /* Never silently create a second copy of a client reference */
+  if(clientRefNo&&!forceDup){
+    var dupL=tmsFindDupRef(clientRefNo);
+    if(dupL){tmsShowDupPopup({ref:clientRefNo,dup:dupL,confirmLabel:'Create anyway',onConfirm:function(){tmsAddLoad(postToBoard,true);}});return;}
+  }
   var D=window.TMS_DATA;
   var newId=_nextLoadId();
   var ref='REF-'+(8800+Math.floor(Math.random()*100));

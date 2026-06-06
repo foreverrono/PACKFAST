@@ -8,3 +8,4 @@ transport-data.js
 firebase-upload.js
 
 .vercel
+.backup-*.json
