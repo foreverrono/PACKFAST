@@ -4366,6 +4366,8 @@ function tmsLoadEntry(){
   '<div class="tms-form-grid" style="margin-bottom:10px;max-width:700px">'+
   '<div><label class="tms-label">Shipment Type ✱</label><select class="tms-select" id="tl-type" onchange="tmsLoadTypeChange()"><option value="FTL">FTL — Full Truckload</option><option value="LTL">LTL — Less Than Truckload</option></select></div>'+
   '<div><label class="tms-label">Shipment Direction ✱</label><select class="tms-select" id="tl-direction" onchange="tmsDirectionChange()"><option value="">— Select Direction —</option><option value="Outbound">Outbound — Leaving our network / to US</option><option value="Inbound">Inbound — Arriving from US / external</option><option value="Local">Local — Same city/region</option><option value="Provincial">Provincial — Within Quebec</option><option value="Global">Global — International</option></select></div>'+
+  '<div><label class="tms-label">Client Reference Number</label><input class="tms-input" id="tl-client-ref" placeholder="e.g. CR-48210" onchange="if(typeof tmsCheckDupRef===\'function\')tmsCheckDupRef(this.value)"></div>'+
+  '<div><label class="tms-label">PO Number</label><input class="tms-input" id="tl-po" placeholder="e.g. PO-10583"></div>'+
   '</div>'+
   '<div id="tl-type-gate" style="background:rgba(224,123,32,0.06);border:0.5px solid rgba(224,123,32,0.15);border-radius:8px;padding:12px;font-size:11px;color:var(--text3);margin-bottom:10px;max-width:700px">Select a Type and Direction above to continue.</div>'+
   '<div id="tl-details-section" style="display:none;max-width:700px">'+
@@ -4445,7 +4447,10 @@ function tmsTransport(){
     var custLabel=custMatch?(custMatch.name||(custMatch.company)):cust;
     var assigneeCell=l.assignedCarrierId?'<span class="tms-badge yellow" style="font-size:8px">Carrier</span>':l.ownerOpId?'<span class="tms-badge purple" style="font-size:8px">OO</span> <span style="font-size:10px;color:var(--text2)">'+(l.ownerOpName||'').split(' · ')[0]+'</span>':l.driver||'—';
     return '<tr class="tms-tr" style="cursor:pointer" onclick="tmsViewLoad(\''+l.id+'\')">'+
-    '<td class="tms-td" style="color:var(--text)">'+l.id+'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div>'+(l.pickupDate||l.deliveryDate?'<div style="font-size:9px;color:var(--text3)">'+(l.pickupDate||l.deliveryDate)+'</div>':'')+'</td>'+
+    '<td class="tms-td" style="color:var(--text)">'+l.id+
+      (l.clientRefNo?'<div style="font-size:9px;color:var(--accent)">Ref: '+_locEsc(l.clientRefNo)+'</div>':(l.ref?'<div style="font-size:9px;color:var(--text3)">'+l.ref+'</div>':''))+
+      (l.poNumber?'<div style="font-size:9px;color:var(--text3)">PO: '+_locEsc(l.poNumber)+'</div>':'')+
+      (l.pickupDate||l.deliveryDate?'<div style="font-size:9px;color:var(--text3)">'+(l.pickupDate||l.deliveryDate)+'</div>':'')+'</td>'+
     '<td class="tms-td" style="font-size:11px;color:var(--accent2);font-weight:500">'+custLabel+'</td>'+
     '<td class="tms-td" style="font-size:10px;max-width:220px"><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(l.origin||'—')+'</div><div style="font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ '+(l.dest||'—')+'</div></td>'+
     '<td class="tms-td" style="font-size:11px">'+assigneeCell+'</td>'+
@@ -4627,6 +4632,8 @@ function tmsAddLoad(postToBoard){
   var trailerId=((document.getElementById('tl-trailer-id')||{}).value||'').trim();
   var notes=((document.getElementById('tl-notes')||{}).value||'').trim();
   var paps=((document.getElementById('tl-paps')||{}).value||'').trim();
+  var clientRefNo=((document.getElementById('tl-client-ref')||{}).value||'').trim();
+  var poNumber=((document.getElementById('tl-po')||{}).value||'').trim();
   var pickupPhone=((document.getElementById('tl-pickup-phone')||{}).value||'').trim();
   var delivPhone=((document.getElementById('tl-delivery-phone')||{}).value||'').trim();
   var assignMode=(document.getElementById('tl-assign-mode')||{}).value||'internal';
@@ -4667,7 +4674,7 @@ function tmsAddLoad(postToBoard){
     ownerOpCost:isOOLoad?ooCost:0,
     trackingEnabled:!!(trk),lastGpsLat:0,lastGpsLng:0,lastGpsTimestamp:'',gpsHeading:0,gpsSpeedKph:0,
     legs:[],isSplit:false,parentShipmentId:null,splitIndex:null,splitOf:null,
-    paps:paps||'',
+    paps:paps||'',clientRefNo:clientRefNo||'',poNumber:poNumber||'',
     pickupName:pickupName||'',pickupPhone:pickupPhone||'',pickupTime:pickupTime||'',
     delivName:delivName||'',delivPhone:delivPhone||'',deliveryTime:delivTime||''
   };
@@ -4943,6 +4950,7 @@ function tmsViewLoad(id,tab){
     (l.driver&&l.driver!=='Unassigned'&&l.driver!=='—'?'<button class="tms-btn sm" onclick="tmsShowDispatch(\''+l.id+'\')" style="font-size:10px">📧 Dispatch</button>':'')+
     '</div>'+
     (clientName!=='—'?'<div style="font-size:13px;color:var(--accent2);font-weight:500;margin-left:30px">'+clientName+'<span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:8px">'+(l.origin?l.origin+' → '+(l.dest||''):'')+'</span></div>':'')+
+    (l.clientRefNo||l.poNumber?'<div style="font-size:11px;color:var(--text2);margin-left:30px;margin-top:3px">'+(l.clientRefNo?'<span style="color:var(--accent)">Client Ref:</span> '+_locEsc(l.clientRefNo):'')+(l.clientRefNo&&l.poNumber?' <span style="color:var(--text3)">·</span> ':'')+(l.poNumber?'<span style="color:var(--accent)">PO:</span> '+_locEsc(l.poNumber):'')+'</div>':'')+
     '</div>';
   /* ── Tabs ── */
   var TABS=[['shipment','Shipment'],['customer','Customer'],['revenue','Revenue'],['dispatch','Driver & Equipment'],['outsource','Outsource']];
@@ -5021,6 +5029,8 @@ function tmsViewLoad(id,tab){
       (D.customers||[]).map(function(c){return'<option value="'+c.name+'"'+(c.name===l.customer?' selected':'')+'>'+c.name+(c.company?' · '+c.company:'')+'</option>';}).join('');
     content+='<div class="tms-form-grid" style="max-width:600px">'+
       '<div class="tms-form-full"><label class="tms-label">Client / Customer</label><select class="tms-select" id="vl-customer"><option value="">— Select —</option>'+custOpts+'</select></div>'+
+      '<div><label class="tms-label">Client Reference Number</label><input class="tms-input" id="vl-client-ref" value="'+_locEsc(l.clientRefNo||'')+'" placeholder="e.g. CR-48210" onchange="if(typeof tmsCheckDupRef===\'function\')tmsCheckDupRef(this.value,\''+l.id+'\')"></div>'+
+      '<div><label class="tms-label">PO Number</label><input class="tms-input" id="vl-po" value="'+_locEsc(l.poNumber||'')+'" placeholder="e.g. PO-10583"></div>'+
       '<div><label class="tms-label">Reference #</label><input class="tms-input" id="vl-ref" value="'+(l.ref||'')+'"></div>'+
       '<div><label class="tms-label">Booked By</label><input class="tms-input" id="vl-bookedby" value="'+(l.bookedBy||'')+'"></div>'+
       '<div><label class="tms-label">PAPS Number</label><input class="tms-input" id="vl-paps" value="'+(l.paps||'')+'" placeholder="MACT00003205"></div>'+
@@ -5222,6 +5232,8 @@ function tmsSaveLoadInline(id){
     if(lastD){l.dest=lastD.address;l.delivName=lastD.name;l.deliveryDate=lastD.date;}
   }else if(tab==='customer'){
     l.customer=v('vl-customer')||l.customer;
+    l.clientRefNo=(v('vl-client-ref')||'').trim();
+    l.poNumber=(v('vl-po')||'').trim();
     l.ref=v('vl-ref')||l.ref;
     l.bookedBy=v('vl-bookedby')||l.bookedBy;
     l.paps=v('vl-paps');
